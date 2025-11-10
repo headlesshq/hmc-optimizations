@@ -16,7 +16,7 @@ jobs:
           - { dir: 1_19, mc: 1.19.4, lex: 45.2.9, neo: 0, java: 17 }
           - { dir: 1_16, mc: 1.16.5, lex: 36.2.42, neo: 0, java: 8 }
           - { dir: 1_12, mc: 1.12.2, lex: 14.23.5.2860, neo: 0, java: 8 }
-    uses: 3arthqu4ke/hmc-optimizations/.github/workflows/build-specific-reusable.yml@main
+    uses: headlesshq/hmc-optimizations/.github/workflows/build-specific-reusable.yml@main
     with:
       dir: ${{ matrix.version.dir }}
       mc: ${{ matrix.version.mc }}

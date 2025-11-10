@@ -1,14 +1,14 @@
 <h1 align="center" style="font-weight: normal;"><b>HMC-Optimizations</b></h1>
 <p align="center">Version specific optimizations for the HeadlessMc runtime.</p>
-<p align="center"><a href="https://github.com/3arthqu4ke/mc-runtime-test">Mc-Runtime-Test</a> | <a href="https://github.com/3arthqu4ke/headlessmc">HMC</a> | <a href="https://github.com/3arthqu4ke/hmc-specifics">HMC-Specifics</a> | HMC-Optimizations</p>
+<p align="center"><a href="https://github.com/headlesshq/mc-runtime-test">Mc-Runtime-Test</a> | <a href="https://github.com/headlesshq/headlessmc">HMC</a> | <a href="https://github.com/headlesshq/hmc-specifics">HMC-Specifics</a> | HMC-Optimizations</p>
 
 <div align="center">
 
-[![CodeFactor](https://www.codefactor.io/repository/github/3arthqu4ke/hmc-optimizations/badge/1.20.4)](https://www.codefactor.io/repository/github/3arthqu4ke/hmc-optimizations/overview/1.20.4)
-[![GitHub All Releases](https://img.shields.io/github/downloads/3arthqu4ke/hmc-optimizations/total.svg)](https://github.com/3arthqu4ke/hmc-optimizations/releases)
-![](https://github.com/3arthqu4ke/hmc-optimizations/actions/workflows/run-mc-runtime-test.yml/badge.svg)
-![GitHub](https://img.shields.io/github/license/3arthqu4ke/hmc-optimizations)
-![Github last-commit](https://img.shields.io/github/last-commit/3arthqu4ke/hmc-optimizations)
+[![CodeFactor](https://www.codefactor.io/repository/github/headlesshq/hmc-optimizations/badge/1.20.4)](https://www.codefactor.io/repository/github/headlesshq/hmc-optimizations/overview/1.20.4)
+[![GitHub All Releases](https://img.shields.io/github/downloads/headlesshq/hmc-optimizations/total.svg)](https://github.com/headlesshq/hmc-optimizations/releases)
+![](https://github.com/headlesshq/hmc-optimizations/actions/workflows/run-mc-runtime-test.yml/badge.svg)
+![GitHub](https://img.shields.io/github/license/headlesshq/hmc-optimizations)
+![Github last-commit](https://img.shields.io/github/last-commit/headlesshq/hmc-optimizations)
 
 </div>
 
@@ -20,7 +20,7 @@
 > Also mods that have mixins in rendering functions and NEED
 > them to be called will not work, because we skip that code.
 
-Version specific optimizations for [HeadlessMC](https://github.com/3arthqu4ke/headlessmc).
+Version specific optimizations for [HeadlessMC](https://github.com/headlesshq/headlessmc).
 The goal of HeadlessMC is to make the Minecraft client run on the command line. It does so by
 hooking into the LWJGL library skipping all the code. This also makes it largely
 Minecraft version independent, as I only have to target the LWJGL library.
