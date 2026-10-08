@@ -11,6 +11,7 @@ jobs:
         strategy:
             matrix:
                 version:
+                    - { dir: 26_2, mc: 26.2, lex: 65.1.3, neo: 26.2.0.75, java: 25 }
                     - { dir: 1_21, mc: 1.21.3, lex: 53.0.7, neo: 11-beta, java: 21 }
                     - { dir: 1_21, mc: 1.21.1, lex: 52.0.2, neo: 4, java: 21 }
                     #- { dir: 1_21, mc: 1.21, lex: 51.0.24, neo: 96-beta, java: 21 }
@@ -32,7 +33,7 @@ jobs:
               working-directory: ./${{ matrix.version.dir }}
               run: ./gradlew build -Pminecraft_version=${{ matrix.version.mc }} -Plexforge_version=${{ matrix.version.lex }} -Pneoforge_version=${{ matrix.version.neo }} --stacktrace
             - name: Delete dev jar
-              run: rm ./${{ matrix.version.dir }}/build/libs/*-dev.jar
+              run: rm -f ./${{ matrix.version.dir }}/build/libs/*-dev.jar
             - name: Delete remapped jar
               run: rm -f ./${{ matrix.version.dir }}/build/libs/*-remapped.jar
             - name: Upload ${{ matrix.version.mc }} Jars

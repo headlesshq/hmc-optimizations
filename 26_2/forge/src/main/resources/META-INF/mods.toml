@@ -1,0 +1,26 @@
+modLoader="javafml"
+loaderVersion="[65,)"
+license="MIT"
+clientSideOnly=true
+
+[[mods]]
+modId="hmc_optimizations"
+version="${mod_version}"
+displayName="HMC-Optimizations"
+displayURL="https://github.com/headlesshq/hmc-optimizations"
+authors="HeadlessHQ contributors"
+description='''Configurable client optimizations for HeadlessMC on Minecraft ${minecraft_version}.'''
+
+[[dependencies.hmc_optimizations]]
+modId="forge"
+mandatory=true
+versionRange="[${lexforge_version},)"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.hmc_optimizations]]
+modId="minecraft"
+mandatory=true
+versionRange="[${minecraft_version},26.3)"
+ordering="NONE"
+side="CLIENT"

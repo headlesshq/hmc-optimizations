@@ -10,6 +10,9 @@ jobs:
     strategy:
       matrix:
         version:
+          - { dir: 26_2, mc: 26.2, java: 25, lex: 65.1.3, neo: 26.2.0.75, type: neoforge, modloader: neoforge, regex: .*neoforge.* }
+          - { dir: 26_2, mc: 26.2, java: 25, lex: 65.1.3, neo: 26.2.0.75, type: lexforge, modloader: forge, regex: .*forge.* }
+          - { dir: 26_2, mc: 26.2, java: 25, lex: 65.1.3, neo: 26.2.0.75, type: fabric, modloader: fabric, regex: .*fabric.* }
           - { dir: 1_21, mc: 1.21.4, java: 21, lex: 54.0.17, neo: 70-beta, type: neoforge, modloader: neoforge, regex: .*neoforge.* }
           - { dir: 1_21, mc: 1.21.4, java: 21, lex: 54.0.17, neo: 70-beta, type: lexforge, modloader: forge, regex: .*forge.* }
           - { dir: 1_21, mc: 1.21.4, java: 21, lex: 54.0.17, neo: 70-beta, type: fabric, modloader: fabric, regex: .*fabric.* }
@@ -52,16 +55,12 @@ jobs:
         run: mkdir -p run/mods
       - name: List mod files
         run: ls ${{ matrix.version.dir }}/build/libs
-      - name: Delete dev jar
-        run: rm ${{ matrix.version.dir }}/build/libs/*-dev.jar
-      #- name: Delete remapped jar
-      #  run: rm ${{ matrix.version.dir }}/build/libs/*-remapped.jar
       - name: Copy mod jar
-        run: cp ${{ matrix.version.dir }}/build/libs/hmc-optimizations-*${{ matrix.version.type }}*.jar run/mods
+        run: cp ${{ matrix.version.dir }}/build/libs/hmc-optimizations-*-${{ matrix.version.type }}.jar run/mods
       - name: List mod dir
         run: ls run/mods
       - name: Run the MC client
-        uses: headlesshq/mc-runtime-test@3.0.0
+        uses: headlesshq/mc-runtime-test@4.5.1
         with:
           mc: ${{ matrix.version.mc }}
           modloader: ${{ matrix.version.modloader }}

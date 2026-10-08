@@ -1,0 +1,34 @@
+{
+  "required": true,
+  "minVersion": "0.8.7",
+  "package": "me.earth.headlessmc.optimizations.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "me.earth.headlessmc.optimizations.mixin.HmcOptimizationsMixinPlugin",
+  "client": [
+    "MixinAtlasManager",
+    "MixinBlockEntityRenderDispatcher",
+    "MixinChunkSectionLayer",
+    "MixinClientChunkCache",
+    "MixinClientLevel",
+    "MixinEntityRenderDispatcher",
+    "MixinEquipmentAssetManager",
+    "MixinGameRenderer",
+    "MixinLevelExtractor",
+    "MixinModelManager",
+    "MixinMusicManager",
+    "MixinParticleEngine",
+    "MixinParticleResources",
+    "MixinRenderBuffers",
+    "MixinSectionCompiler",
+    "MixinSectionRenderDispatcher",
+    "MixinSoundEngine",
+    "MixinSoundManager",
+    "MixinTextureManager"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}
