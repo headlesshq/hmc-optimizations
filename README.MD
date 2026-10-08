@@ -1,5 +1,6 @@
 <h1 align="center" style="font-weight: normal;"><b>HMC-Optimizations</b></h1>
 <p align="center">Version specific optimizations for the HeadlessMc runtime.</p>
+<p align="center"><img src="docs/logo.svg" alt="logo" style="width:250px;"></p>
 <p align="center"><a href="https://github.com/headlesshq/mc-runtime-test">Mc-Runtime-Test</a> | <a href="https://github.com/headlesshq/headlessmc">HMC</a> | <a href="https://github.com/headlesshq/hmc-specifics">HMC-Specifics</a> | HMC-Optimizations</p>
 
 <div align="center">
