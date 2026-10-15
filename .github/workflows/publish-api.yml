@@ -1,0 +1,20 @@
+---
+name: Publish API
+
+"on":
+  release:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  publish-api:
+    name: Publish API
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/flex-build.yml
+    with:
+      dir: hmc-optimizations-api
+      java: 8
+      publish: true
+      upload: false

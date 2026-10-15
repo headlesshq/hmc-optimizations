@@ -1,0 +1,144 @@
+---
+name: Release Tags
+
+"on":
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  matrices:
+    name: Construct matrices
+    runs-on: ubuntu-latest
+    outputs:
+      build-matrix: ${{ steps.matrices.outputs.build-matrix }}
+      release-matrix: ${{ steps.matrices.outputs.release-matrix }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 1
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(jq -r '."."' .release-please-manifest.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - id: matrices
+        name: Construct matrices
+        run: |
+          import json
+          import os
+
+          with open('ci-data.json') as f:
+              ci_data = json.load(f)
+
+          build_data = ci_data['build_data']
+          run_data = ci_data['run_data']
+
+          # the API is released by the Lifecycle workflow
+          build_matrix = {"include": [item for item in build_data if "mc" in item]}
+
+          seen = set()
+          release_versions = []
+          for item in run_data:
+              mc = item["mc"]
+              if mc not in seen:
+                  seen.add(mc)
+                  release_versions.append({"mc": mc})
+
+          release_matrix = {"include": release_versions}
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+              fh.write(f'build-matrix={json.dumps(build_matrix)}\n')
+              fh.write(f'release-matrix={json.dumps(release_matrix)}\n')
+        shell: python {0}
+
+  build:
+    name: Build
+    needs: matrices
+    strategy:
+      fail-fast: false
+      matrix:
+        ${{ insert }}: ${{ fromJSON(needs.matrices.outputs.build-matrix) }}
+    uses: ./.github/workflows/flex-build.yml
+    with:
+      dir: ${{ matrix.dir }}
+      mc: ${{ matrix.mc }}
+      lex: ${{ matrix.lex }}
+      neo: ${{ matrix.neo }}
+      java: ${{ matrix.java }}
+
+  release:
+    name: Latest Pre-Releases
+    needs:
+      - matrices
+      - build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        ${{ insert }}: ${{ fromJSON(needs.matrices.outputs.release-matrix) }}
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: jars-${{ matrix.mc }}
+          path: jars
+          merge-multiple: true
+
+      - name: Prepare assets
+        env:
+          VERSION: ${{ needs.matrices.outputs.version }}
+        run: |
+          mkdir -p out/latest out/version
+          for modloader in fabric forge neoforge; do
+            type=$modloader
+            if [ "$modloader" = "forge" ]; then type=lexforge; fi
+            file=$(find jars -type f -name "*-${type}-release.jar" | head -n 1)
+            if [ -f "$file" ]; then
+              cp "$file" "out/latest/hmc-optimizations-${{ matrix.mc }}-${modloader}-latest.jar"
+              cp "$file" "out/version/hmc-optimizations-${{ matrix.mc }}-${modloader}-${VERSION}.jar"
+            fi
+          done
+          ls -R out
+
+      - name: Create or update tag
+        run: |
+          git init
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+          git fetch origin
+          git tag -f ${{ matrix.mc }}-latest ${{ github.sha }}
+          git push origin ${{ matrix.mc }}-latest --force
+
+      - name: Release version tag
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ matrix.mc }}-${{ needs.matrices.outputs.version }}
+          name: ${{ matrix.mc }}-${{ needs.matrices.outputs.version }}
+          prerelease: true
+          body: "Version [${{ needs.matrices.outputs.version }}](https://github.com/${{ github.repository }}/releases/tag/${{ needs.matrices.outputs.version }})"
+          files: out/version/*
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release latest tag
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ matrix.mc }}-latest
+          name: ${{ matrix.mc }}-latest
+          prerelease: true
+          body: "Version [${{ needs.matrices.outputs.version }}](https://github.com/${{ github.repository }}/releases/tag/${{ needs.matrices.outputs.version }})"
+          files: out/latest/*
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

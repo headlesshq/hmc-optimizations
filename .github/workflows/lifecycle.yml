@@ -1,0 +1,443 @@
+---
+name: Lifecycle
+
+"on":
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - closed
+      - opened
+      - synchronize
+      - reopened
+  workflow_dispatch:
+    inputs:
+      dirs:
+        description: Comma-delimited directories to build and run (i.e. hmc-optimizations-api,1_20,1_21 )
+        default: "all"
+      ref:
+        description: Git ref to checkout before build (i.e. my-feature-branch )
+        default: "main"
+
+concurrency: # FIXME: prevent release commit cancellation
+  group: >
+    ${{ github.workflow }}-
+    ${{ github.event_name }}-
+    ${{ github.event.inputs.ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  HMC_VERSION: 3.0.0-RC8
+  # HMC-Specifics provides the optimize command and takes the screenshots in the xvfb tests
+  HMC_SPECIFICS_VERSION: 3.0.0
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release-please.outputs.release_created }}
+      tag_name: ${{ steps.release-please.outputs.tag_name }}
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - if: github.event_name == 'push'
+        id: release-please
+        name: Run Release Please
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  matrices:
+    if: github.event.action != 'closed'
+    name: Construct matrices
+    needs: release-please
+    runs-on: ubuntu-latest
+    outputs:
+      build-matrix: ${{ steps.matrices.outputs.build-matrix }}
+      run-matrix: ${{ steps.matrices.outputs.run-matrix }}
+      xvfb-matrix: ${{ steps.matrices.outputs.xvfb-matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 1
+          ref: ${{ inputs.ref || github.ref }}
+
+      - if: github.event_name != 'workflow_dispatch'
+        id: paths
+        name: Get paths
+        run: |
+          { delimiter="$(openssl rand -hex 8)"
+          echo "filter<<${delimiter}"
+          for dir in $(find . -maxdepth 1 -type d -not -path "./.git*" -print | cut -d/ -f2-); do
+            echo "'$dir' : ['$dir/**']"
+          done; echo "${delimiter}"; } >> "${GITHUB_OUTPUT}"
+
+      - if: github.event_name != 'workflow_dispatch'
+        id: filter
+        name: Filter
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        with:
+          filters: |
+            ${{ steps.paths.outputs.filter }}
+
+      - id: matrices
+        name: Construct matrices
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          FILTER_OUTCOME: ${{ steps.filter.outcome }}
+          FILTER_CHANGES: ${{ steps.filter.outputs.changes }}
+          INPUT_DIRS: ${{ github.event.inputs.dirs }}
+          RELEASE_CREATED: ${{ needs.release-please.outputs.release_created }}
+        run: |
+          import os
+          import json
+          import re
+
+          build_matrix = {"include": []}
+          run_matrix = {"version": []}
+
+          with open('ci-data.json') as f:
+              ci_data = json.load(f)
+
+          build_data = ci_data['build_data']
+          run_data = ci_data['run_data']
+
+          dirs_to_filter = []
+          mc_versions = []
+
+          match os.getenv('GITHUB_EVENT_NAME'):
+            case 'pull_request':
+              if os.getenv('FILTER_OUTCOME') == 'success':
+                # Filter matrices based on the detected changes
+                dirs_to_filter = json.loads(os.getenv('FILTER_CHANGES') or '[]')
+                # Changes to the API affect every Minecraft version
+                if 'hmc-optimizations-api' in dirs_to_filter:
+                  dirs_to_filter = [item['dir'] for item in build_data]
+                # PRs opened by the mc-update-helper only build and run the new version
+                body = os.getenv('PR_BODY')
+                if body:
+                  pattern = r'Automatic commit: build and run ([0-9\.]*[0-9]*) in ([0-9_]*[0-9]*)'
+                  matches = re.findall(pattern, body)
+                  if matches:
+                    mc_versions = [version for version, _ in matches]
+                    dirs_to_filter = [directory for _, directory in matches]
+                    print('Matched PR body', mc_versions, dirs_to_filter)
+
+            case 'workflow_dispatch':
+              input_dirs = os.getenv('INPUT_DIRS')
+              if input_dirs == 'all':
+                build_matrix['include'], run_matrix['version'] = build_data, run_data
+              else:
+                dirs_to_filter = [item.strip() for item in input_dirs.split(',')]
+
+            case 'push':
+              if os.getenv('RELEASE_CREATED') == 'true':
+                # If a release is created, use the full matrices
+                build_matrix['include'], run_matrix['version'] = build_data, run_data
+
+          if dirs_to_filter:
+            build_matrix['include'].extend([item for item in build_data if item["dir"] in dirs_to_filter and ("mc" not in item or (item["mc"] in mc_versions or not mc_versions))])
+            mc_versions = mc_versions if mc_versions else [item.get("mc") for item in build_matrix["include"] if "mc" in item]
+            run_matrix['version'].extend([item for item in run_data if item["mc"] in mc_versions])
+
+          # Versions that can be rendered also take screenshots with Xvfb, with optimizations on and off
+          xvfb_matrix = {"version": [item for item in run_matrix['version'] if item.get('xvfb', False)]}
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+            for name, matrix in [('build-matrix', build_matrix), ('run-matrix', run_matrix), ('xvfb-matrix', xvfb_matrix)]:
+              print(name, json.dumps(matrix, indent=2))
+              fh.write(f'{name}={json.dumps(matrix)}\n')
+        shell: python {0}
+
+  build:
+    if: fromJSON(needs.matrices.outputs.build-matrix).include[0] != null
+    name: Build
+    needs: matrices
+    strategy:
+      fail-fast: false
+      matrix:
+        ${{ insert }}: ${{ fromJSON(needs.matrices.outputs.build-matrix) }}
+    uses: ./.github/workflows/flex-build.yml
+    with:
+      dir: ${{ matrix.dir }}
+      mc: ${{ matrix.mc }}
+      lex: ${{ matrix.lex }}
+      neo: ${{ matrix.neo }}
+      java: ${{ matrix.java }}
+
+  run:
+    if: github.event_name != 'push' && fromJSON(needs.matrices.outputs.run-matrix).version[0] != null
+    name: Run headless
+    needs:
+      - matrices
+      - build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ${{ insert }}: ${{ fromJSON(needs.matrices.outputs.run-matrix) }}
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: jars-${{ matrix.version.mc }}
+
+      - name: Bootstrap mods
+        run: |
+          mkdir -p run/mods
+          cp hmc-optimizations-*-${{ matrix.version.type }}-release.jar run/mods
+          ls run/mods
+
+      - name: Setup Java temurin-${{ matrix.version.java }}
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          java-version: ${{ matrix.version.java }}
+          distribution: temurin
+
+      # MC-Runtime-Test joins a world and checks that the game does not crash
+      - name: Run game
+        uses: headlesshq/mc-runtime-test@dfc8a2a0145f723b01abda5e1cf59eaba516d128 # 5.0.0
+        with:
+          mc: ${{ matrix.version.mc }}
+          modloader: ${{ matrix.version.modloader }}
+          java: ${{ matrix.version.java }}
+          mc-runtime-test: ${{ matrix.version.type }}
+          xvfb: false
+          hmc-version: ${{ env.HMC_VERSION }}
+          headlessmc-command: --retries 3 --jvm "-Djava.awt.headless=true -Dhmc.jline.enabled=false"
+
+  xvfb:
+    if: github.event_name != 'push' && fromJSON(needs.matrices.outputs.xvfb-matrix).version[0] != null
+    name: Screenshots with Xvfb
+    needs:
+      - matrices
+      - build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ${{ insert }}: ${{ fromJSON(needs.matrices.outputs.xvfb-matrix) }}
+    steps:
+      - name: Checkout # for hmc-optimizations-test.json
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 1
+          sparse-checkout: hmc-optimizations-test.json
+          sparse-checkout-cone-mode: false
+
+      - name: Download artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: jars-${{ matrix.version.mc }}
+
+      - name: Bootstrap mods
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p run/mods
+          cp hmc-optimizations-*-${{ matrix.version.type }}-release.jar run/mods
+          gh release download "$HMC_SPECIFICS_VERSION" --repo headlesshq/hmc-specifics --dir run/mods \
+            --pattern "hmc-specifics-${{ matrix.version.mc }}-$HMC_SPECIFICS_VERSION-${{ matrix.version.type }}-release.jar"
+          ls run/mods
+
+      - name: Setup Java temurin-${{ matrix.version.java }}
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          java-version: ${{ matrix.version.java }}
+          distribution: temurin
+
+      # mc-runtime-test appends its own configuration to this file
+      - name: Configure HeadlessMC test
+        run: |
+          mkdir -p HeadlessMC
+          cat <<EOF >> HeadlessMC/config.properties
+          hmc.test.file=$PWD/hmc-optimizations-test.json
+          hmc.log.console-level=INFO
+          EOF
+
+      - name: Run game
+        uses: headlesshq/mc-runtime-test@dfc8a2a0145f723b01abda5e1cf59eaba516d128 # 5.0.0
+        with:
+          mc: ${{ matrix.version.mc }}
+          modloader: ${{ matrix.version.modloader }}
+          java: ${{ matrix.version.java }}
+          mc-runtime-test: none
+          xvfb: true
+          # the screenshots should show something
+          dummy-assets: false
+          hmc-version: ${{ env.HMC_VERSION }}
+          headlessmc-command: --retries 3 --jvm "-Dhmc.jline.enabled=false"
+
+      # An empty frame compresses into a PNG of a few KB, even the loading screen is larger
+      - name: Check screenshots
+        run: |
+          for name in optimized unoptimized; do
+            file="run/screenshots/$name.png"
+            size=$(stat -c %s "$file")
+            echo "$file: $size bytes"
+            if [ "$size" -lt 10000 ]; then
+              echo "::error::$file is only $size bytes, the frame was probably not rendered"
+              exit 1
+            fi
+          done
+
+      - if: always()
+        name: Upload screenshots
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: screenshots-${{ matrix.version.mc }}-${{ matrix.version.type }}
+          path: run/screenshots/*.png
+          if-no-files-found: ignore
+
+  release:
+    if: needs.release-please.outputs.release_created == 'true'
+    needs:
+      - release-please
+      - build
+    name: Release
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+
+      - name: Upload release artifacts
+        uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: jars-*/*-release.jar
+          tag: ${{ needs.release-please.outputs.tag_name }}
+          overwrite: true
+          file_glob: true
+
+      - name: Upload api artifacts
+        uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: jars-*/hmc-optimizations-api-*.jar
+          tag: ${{ needs.release-please.outputs.tag_name }}
+          overwrite: true
+          file_glob: true
+
+  clean:
+    name: Clean up
+    needs:
+      - run
+      - xvfb
+      - release
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete artifacts
+        uses: geekyeggo/delete-artifact@f275313e70c08f6120db482d7a6b98377786765b # v5.1.0
+        with:
+          name: |
+            jars-*
+          failOnError: false
+
+  claude-fix:
+    name: Claude fix
+    needs: [build, run, xvfb]
+    # Only runs once when an mc-update-helper PR is opened and fails
+    if: >
+      !cancelled() &&
+      contains(needs.*.result, 'failure') &&
+      github.event_name == 'pull_request' &&
+      github.event.action == 'opened' &&
+      startsWith(github.head_ref, 'version-') &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.head_ref }}
+          # PAT so the push triggers CI again; GITHUB_TOKEN pushes don't
+          token: ${{ secrets.PR_TOKEN }}
+
+      - name: Determine Java version of the new Minecraft version
+        id: java
+        # mc-update-helper inserts the new version as the first versioned entry
+        run: echo "version=$(jq -r '[.build_data[] | select(.mc)][0].java' ci-data.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Java
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: ${{ steps.java.outputs.version }}
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
+
+      - name: Configure git
+        run: |
+          git config user.name "claude[bot]"
+          git config user.email "claude[bot]@users.noreply.github.com"
+
+      - name: Fix with Claude
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.PR_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.PR_TOKEN }}
+          plugin_marketplaces: https://github.com/headlesshq/headlessmc-skill.git
+          plugins: headlessmc@headlesshq
+          claude_args: >-
+            --max-turns 120
+            --allowedTools "Bash,Read,Edit,Write,Glob,Grep,WebFetch,Skill"
+          prompt: |
+            Pull request #${{ github.event.pull_request.number }} on branch `${{ github.head_ref }}`
+            was opened automatically by mc-update-helper to add support for a new Minecraft version.
+            It copied the project directory of the previous version and bumped versions in
+            gradle.properties, fabric.mod.json, mods.toml, ci-data.json and the README.
+
+            The CI run failed:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            - build: ${{ needs.build.result }}
+            - run (headless runtime tests): ${{ needs.run.result }}
+            - xvfb (screenshot tests): ${{ needs.xvfb.result }}
+
+            HMC-Optimizations patches Minecraft's rendering, sound and resource code with Mixins.
+            New Minecraft versions often rename or change the targeted methods.
+            Optimizations that can be turned off at runtime must check
+            `HmcOptimizations.isActive()` from the hmc-optimizations-api module.
+
+            You have the `headlessmc` skill. Use it to install HeadlessMc and to launch
+            Minecraft headlessly with mod loaders (including MC-Runtime-Test for CI checks).
+
+            Steps:
+            1. Read the logs of the failed jobs with
+               `gh run view ${{ github.run_id }} --log-failed`.
+            2. Find the cause. Typical causes: Mixin targets that changed in the new Minecraft
+               version, loader versions (Fabric loader, NeoForge, Forge) that don't exist yet or are
+               wrong in gradle.properties, a wrong Java version in ci-data.json, or crashes on startup.
+            3. Fix only the directory of the new version (and ci-data.json/README if
+               needed). Do not modify directories of other Minecraft versions.
+            4. Verify that it builds with `./gradlew build` inside that directory.
+            5. Verify that the mod launches: for every mod loader the new version is
+               built and tested for (see the build_data/run_data entries for it in
+               ci-data.json), use the headlessmc skill to launch Minecraft headlessly
+               with an offline account, that loader, the built mod jar and MC-Runtime-Test,
+               and check that the game starts, loads into a world and exits without a
+               crash. If it crashes, read the crash report/log, fix the cause and repeat.
+            6. Commit with a message like `fix: <short description>` and push to
+               `${{ github.head_ref }}`. In the commit message, list which loaders
+               you verified launch successfully.
+
+            If you cannot fix it (e.g. a loader has no release for this version yet),
+            don't push anything. Instead, comment on the PR with
+            `gh pr comment ${{ github.event.pull_request.number }} --body "..."`,
+            explaining what fails, which loaders you tested and what is needed.
+            If a fix compiles but you could not get a launch to succeed for some loader,
+            push the fix and comment on the PR which loaders still fail and why.

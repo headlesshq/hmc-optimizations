@@ -1,0 +1,465 @@
+{
+  "name": "HMC-Optimizations Test",
+  "timeout": 120,
+  "steps": [
+    {
+      "type": "ENDS_WITH",
+      "message": "HMC-Specifics initialized!",
+      "timeout": 600,
+      "or": [
+        {
+          "type": "REGEX",
+          "message": ".*Failed to (load|register) command .*",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "An error occurred: ",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Command failed",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Couldn't find command for",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Failed to take screenshot",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Timed out waiting for the screenshot",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "SEND",
+      "message": "optimize"
+    },
+    {
+      "type": "ENDS_WITH",
+      "message": "HMC-Optimizations enabled.",
+      "or": [
+        {
+          "type": "REGEX",
+          "message": ".*Failed to (load|register) command .*",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "An error occurred: ",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Command failed",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Couldn't find command for",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Failed to take screenshot",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Timed out waiting for the screenshot",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "SEND",
+      "message": "screenshot screenshots/optimized.png"
+    },
+    {
+      "type": "CONTAINS",
+      "message": "Saved screenshot to",
+      "timeout": 60,
+      "or": [
+        {
+          "type": "REGEX",
+          "message": ".*Failed to (load|register) command .*",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "An error occurred: ",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Command failed",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Couldn't find command for",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Failed to take screenshot",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Timed out waiting for the screenshot",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "SEND",
+      "message": "optimize"
+    },
+    {
+      "type": "ENDS_WITH",
+      "message": "HMC-Optimizations enabled.",
+      "or": [
+        {
+          "type": "REGEX",
+          "message": ".*Failed to (load|register) command .*",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "An error occurred: ",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Command failed",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Couldn't find command for",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Failed to take screenshot",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Timed out waiting for the screenshot",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "SEND",
+      "message": "optimize off"
+    },
+    {
+      "type": "ENDS_WITH",
+      "message": "HMC-Optimizations disabled.",
+      "or": [
+        {
+          "type": "REGEX",
+          "message": ".*Failed to (load|register) command .*",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "An error occurred: ",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Command failed",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Couldn't find command for",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Failed to take screenshot",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Timed out waiting for the screenshot",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "SEND",
+      "message": "screenshot screenshots/unoptimized.png"
+    },
+    {
+      "type": "CONTAINS",
+      "message": "Saved screenshot to",
+      "timeout": 60,
+      "or": [
+        {
+          "type": "REGEX",
+          "message": ".*Failed to (load|register) command .*",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "An error occurred: ",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Command failed",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Couldn't find command for",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Failed to take screenshot",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Timed out waiting for the screenshot",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "SEND",
+      "message": "optimize toggle"
+    },
+    {
+      "type": "ENDS_WITH",
+      "message": "HMC-Optimizations enabled.",
+      "or": [
+        {
+          "type": "REGEX",
+          "message": ".*Failed to (load|register) command .*",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "An error occurred: ",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Command failed",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Couldn't find command for",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Failed to take screenshot",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        },
+        {
+          "type": "CONTAINS",
+          "message": "Timed out waiting for the screenshot",
+          "then": [
+            {
+              "type": "FAIL"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "SEND",
+      "message": "quit"
+    },
+    {
+      "type": "ENDS_WITH",
+      "message": "Quitting Minecraft...",
+      "timeout": 60
+    },
+    {
+      "type": "SUCCESS"
+    }
+  ]
+}
