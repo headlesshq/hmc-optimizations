@@ -1,0 +1,102 @@
+{
+  extends: [
+    ':enableRenovate',
+    ':semanticCommits',
+    'config:best-practices',
+  ],
+  timezone: 'UTC',
+  dependencyDashboard: true,
+  platformCommit: 'enabled',
+  prCreation: 'not-pending',
+  suppressNotifications: [
+    'prIgnoreNotification',
+  ],
+  rebaseWhen: 'conflicted',
+  enabledManagers: [
+    'github-actions',
+    'gradle',
+    'custom.regex',
+  ],
+  // The Minecraft version projects pin their loaders and toolchains on purpose,
+  // new Minecraft versions are added by the mc-update-helper instead.
+  includePaths: [
+    '.github/**',
+    'hmc-optimizations-api/**',
+  ],
+  customManagers: [
+    {
+      customType: 'regex',
+      description: 'HeadlessMc version used to run the game in CI',
+      managerFilePatterns: [
+        '/^\\.github/workflows/lifecycle\\.yml$/',
+      ],
+      matchStrings: [
+        'HMC_VERSION: (?<currentValue>\\S+)',
+      ],
+      datasourceTemplate: 'github-releases',
+      depNameTemplate: 'headlesshq/headlessmc',
+      extractVersionTemplate: '^v?(?<version>.*)$',
+    },
+    {
+      customType: 'regex',
+      description: 'HMC-Specifics version used for the screenshot tests in CI',
+      managerFilePatterns: [
+        '/^\\.github/workflows/lifecycle\\.yml$/',
+      ],
+      matchStrings: [
+        'HMC_SPECIFICS_VERSION: (?<currentValue>\\S+)',
+      ],
+      datasourceTemplate: 'github-releases',
+      depNameTemplate: 'headlesshq/hmc-specifics',
+    },
+  ],
+  packageRules: [
+    {
+      // HMC-Specifics also publishes <mc>-<version> pre-releases for every Minecraft version
+      matchDepNames: [
+        'headlesshq/hmc-specifics',
+      ],
+      allowedVersions: '/^\\d+\\.\\d+\\.\\d+$/',
+    },
+    {
+      // dependency updates of the API affect the released artifacts, so they should trigger a release
+      matchManagers: [
+        'gradle',
+      ],
+      semanticCommitType: 'fix',
+      semanticCommitScope: 'deps',
+    },
+    {
+      matchManagers: [
+        'github-actions',
+        'custom.regex',
+      ],
+      semanticCommitType: 'ci',
+      semanticCommitScope: 'deps',
+    },
+    {
+      matchUpdateTypes: [
+        'major',
+      ],
+      addLabels: [
+        'dependency/major',
+      ],
+    },
+    {
+      matchUpdateTypes: [
+        'minor',
+      ],
+      addLabels: [
+        'dependency/minor',
+      ],
+    },
+    {
+      matchUpdateTypes: [
+        'patch',
+      ],
+      addLabels: [
+        'dependency/patch',
+      ],
+    },
+  ],
+}
