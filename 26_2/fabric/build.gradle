@@ -1,0 +1,55 @@
+plugins {
+    id "net.fabricmc.fabric-loom" version "${loom_version}"
+}
+
+base {
+    archivesName = project.archives_base_name
+}
+
+loom {
+    splitEnvironmentSourceSets()
+
+    mods {
+        hmc_optimizations {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+sourceSets {
+    main {
+        java.setSrcDirs([rootProject.sharedMainJava])
+        resources.setSrcDirs([project.file("src/main/resources")])
+    }
+    client {
+        java.setSrcDirs([rootProject.sharedClientJava])
+        resources.setSrcDirs([rootProject.sharedClientResources])
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+}
+
+tasks.named("processResources", ProcessResources) {
+    inputs.properties(
+        version: project.version,
+        minecraft_version: project.minecraft_version,
+        loader_version: project.loader_version
+    )
+
+    filesMatching("fabric.mod.json") {
+        expand(
+            version: project.version,
+            minecraft_version: project.minecraft_version,
+            loader_version: project.loader_version
+        )
+    }
+}
+
+tasks.named("jar", Jar) {
+    destinationDirectory = rootProject.releaseDirectory
+    archiveFileName = "${project.archives_base_name}-${project.minecraft_version}-${project.version}-fabric.jar"
+}

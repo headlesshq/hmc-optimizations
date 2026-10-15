@@ -8,6 +8,7 @@ jobs:
     strategy:
       matrix:
         version:
+          - { dir: 26_2, mc: 26.2, lex: 65.1.3, neo: 26.2.0.75, java: 25 }
           - { dir: 1_21, mc: 1.21.4, lex: 54.0.17, neo: 70-beta, java: 21 }
           - { dir: 1_21, mc: 1.21.3, lex: 53.0.7, neo: 11-beta, java: 21 }
           - { dir: 1_21, mc: 1.21.1, lex: 52.0.2, neo: 4, java: 21 }
@@ -23,4 +24,3 @@ jobs:
       lex: ${{ matrix.version.lex }}
       neo: ${{ matrix.version.neo }}
       java: ${{ matrix.version.java }}
-      

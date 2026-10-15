@@ -1,0 +1,26 @@
+license="MIT"
+
+[[mods]]
+modId="hmc_optimizations"
+version="${mod_version}"
+displayName="HMC-Optimizations"
+displayURL="https://github.com/headlesshq/hmc-optimizations"
+authors="HeadlessHQ contributors"
+description='''Configurable client optimizations for HeadlessMC on Minecraft ${minecraft_version}.'''
+
+[[mixins]]
+config="hmcoptimizations.client.mixins.json"
+
+[[dependencies.hmc_optimizations]]
+modId="neoforge"
+type="required"
+versionRange="[${neoforge_version},)"
+ordering="NONE"
+side="CLIENT"
+
+[[dependencies.hmc_optimizations]]
+modId="minecraft"
+type="required"
+versionRange="[${minecraft_version}]"
+ordering="NONE"
+side="CLIENT"

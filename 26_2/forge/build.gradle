@@ -1,0 +1,61 @@
+plugins {
+    id "java"
+    id "net.minecraftforge.gradle" version "${forgegradle_version}"
+}
+
+base {
+    archivesName = project.archives_base_name
+}
+
+sourceSets.main {
+    java.setSrcDirs([
+        rootProject.sharedMainJava,
+        rootProject.sharedClientJava,
+        project.file("src/main/java")
+    ])
+    resources.setSrcDirs([
+        rootProject.sharedClientResources,
+        project.file("src/main/resources")
+    ])
+}
+
+minecraft {
+    runs {
+        configureEach {
+            workingDir = layout.projectDirectory.dir("run")
+            args "--mixin.config=hmcoptimizations.client.mixins.json"
+        }
+        register("client")
+    }
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.forgeMaven
+    maven fg.minecraftLibsMaven
+    mavenCentral()
+}
+
+dependencies {
+    implementation minecraft.dependency("net.minecraftforge:forge:${project.minecraft_version}-${project.lexforge_version}")
+}
+
+tasks.named("processResources", ProcessResources) {
+    def replacementProperties = [
+        mod_version: project.version,
+        minecraft_version: project.minecraft_version,
+        lexforge_version: project.lexforge_version
+    ]
+    inputs.properties(replacementProperties)
+    filesMatching("META-INF/mods.toml") {
+        expand(replacementProperties)
+    }
+}
+
+tasks.named("jar", Jar) {
+    destinationDirectory = rootProject.releaseDirectory
+    archiveFileName = "${project.archives_base_name}-${project.minecraft_version}-${project.version}-lexforge.jar"
+    manifest {
+        attributes("MixinConfigs": "hmcoptimizations.client.mixins.json")
+    }
+}

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "hmc_optimizations",
+  "version": "${version}",
+  "name": "HMC-Optimizations",
+  "description": "Configurable client optimizations for HeadlessMC on Minecraft ${minecraft_version}.",
+  "authors": [
+    "HeadlessHQ contributors"
+  ],
+  "contact": {
+    "homepage": "https://github.com/headlesshq/hmc-optimizations",
+    "sources": "https://github.com/headlesshq/hmc-optimizations",
+    "issues": "https://github.com/headlesshq/hmc-optimizations/issues"
+  },
+  "license": "MIT",
+  "environment": "client",
+  "mixins": [
+    {
+      "config": "hmcoptimizations.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "~${minecraft_version}",
+    "java": ">=25"
+  }
+}

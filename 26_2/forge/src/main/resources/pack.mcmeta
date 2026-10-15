@@ -1,0 +1,13 @@
+{
+  "pack": {
+    "description": "HMC-Optimizations resources",
+    "min_format": [
+      88,
+      0
+    ],
+    "max_format": [
+      88,
+      0
+    ]
+  }
+}

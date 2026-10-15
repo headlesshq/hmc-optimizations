@@ -1,0 +1,92 @@
+plugins {
+    id "base"
+}
+
+group = project.maven_group
+version = project.mod_version
+
+ext {
+    sharedMainJava = rootProject.file("src/main/java")
+    sharedClientJava = rootProject.file("src/client/java")
+    sharedClientResources = rootProject.file("src/client/resources")
+    releaseDirectory = rootProject.layout.buildDirectory.dir("libs")
+}
+
+subprojects {
+    group = rootProject.group
+    version = rootProject.version
+
+    plugins.withId("java") {
+        java {
+            toolchain.languageVersion = JavaLanguageVersion.of(25)
+        }
+
+        tasks.withType(JavaCompile).configureEach {
+            options.encoding = "UTF-8"
+            options.release = 25
+        }
+
+        tasks.withType(Jar).configureEach {
+            from(rootProject.file("../LICENSE")) {
+                rename { "LICENSE_hmc-optimizations" }
+            }
+
+            manifest {
+                attributes(
+                    "Implementation-Title": "HMC-Optimizations",
+                    "Implementation-Version": project.version
+                )
+            }
+        }
+    }
+}
+
+def expectedLoaderJars = [
+    fabric: "${archives_base_name}-${minecraft_version}-${mod_version}-fabric.jar",
+    forge: "${archives_base_name}-${minecraft_version}-${mod_version}-lexforge.jar",
+    neoforge: "${archives_base_name}-${minecraft_version}-${mod_version}-neoforge.jar"
+]
+
+tasks.named("clean") {
+    dependsOn(subprojects.collect { "${it.path}:clean" })
+}
+
+tasks.register("verifyLoaderJars") {
+    group = "verification"
+    description = "Checks that the three release jars contain the correct loader metadata."
+    dependsOn(expectedLoaderJars.keySet().collect { ":${it}:build" })
+
+    doLast {
+        def outputDirectory = releaseDirectory.get().asFile
+        def actualJars = outputDirectory.listFiles({ file -> file.name.endsWith(".jar") } as FileFilter)
+            ?.collect { it.name }
+            ?.sort() ?: []
+        def expectedJars = expectedLoaderJars.values().sort()
+        if (actualJars != expectedJars) {
+            throw new GradleException("Expected release jars ${expectedJars}, found ${actualJars}")
+        }
+
+        def expectedEntries = [
+            fabric: "fabric.mod.json",
+            forge: "META-INF/mods.toml",
+            neoforge: "META-INF/neoforge.mods.toml"
+        ]
+        expectedLoaderJars.each { loader, fileName ->
+            def jarFile = new java.util.zip.ZipFile(new File(outputDirectory, fileName))
+            try {
+                if (jarFile.getEntry(expectedEntries[loader]) == null) {
+                    throw new GradleException("${fileName} is missing ${expectedEntries[loader]}")
+                }
+                if (jarFile.getEntry("hmcoptimizations.client.mixins.json") == null) {
+                    throw new GradleException("${fileName} is missing the shared Mixin configuration")
+                }
+            } finally {
+                jarFile.close()
+            }
+        }
+    }
+}
+
+tasks.named("build") {
+    dependsOn(tasks.named("verifyLoaderJars"))
+}

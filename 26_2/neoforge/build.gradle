@@ -1,0 +1,53 @@
+plugins {
+    id "java-library"
+    id "net.neoforged.moddev" version "${moddevgradle_version}"
+}
+
+base {
+    archivesName = project.archives_base_name
+}
+
+sourceSets.main {
+    java.setSrcDirs([
+        rootProject.sharedMainJava,
+        rootProject.sharedClientJava,
+        project.file("src/main/java")
+    ])
+    resources.setSrcDirs([
+        rootProject.sharedClientResources,
+        project.file("src/main/resources")
+    ])
+}
+
+neoForge {
+    version = project.neoforge_version
+
+    runs {
+        client {
+            client()
+        }
+    }
+
+    mods {
+        hmc_optimizations {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+tasks.named("processResources", ProcessResources) {
+    def replacementProperties = [
+        mod_version: project.version,
+        minecraft_version: project.minecraft_version,
+        neoforge_version: project.neoforge_version
+    ]
+    inputs.properties(replacementProperties)
+    filesMatching("META-INF/neoforge.mods.toml") {
+        expand(replacementProperties)
+    }
+}
+
+tasks.named("jar", Jar) {
+    destinationDirectory = rootProject.releaseDirectory
+    archiveFileName = "${project.archives_base_name}-${project.minecraft_version}-${project.version}-neoforge.jar"
+}
