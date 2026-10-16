@@ -28,4 +28,7 @@ pluginManagement {
     }
 }
 
+include 'hmc-optimizations-api'
+project(':hmc-optimizations-api').projectDir = file('../hmc-optimizations-api')
+
 rootProject.name = "hmc-optimizations-${minecraft_version}"
