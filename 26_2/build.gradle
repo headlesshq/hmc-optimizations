@@ -1,92 +1,270 @@
+import io.github.headlesshq.headlessmc.gradle.HeadlessMcRunTask
+import me.earth.headlessmc.launcher.modlauncher.Modlauncher
+
+buildscript {
+    repositories {
+        maven {
+            name = "3arthMaven"
+            url = "https://3arthqu4ke.github.io/maven"
+        }
+    }
+
+    dependencies {
+        classpath "me.earth.headlessmc:headlessmc-launcher:2.1.0"
+        classpath "io.github.headlesshq:headlessmc-gradle-plugin:0.3.0"
+    }
+}
+
 plugins {
-    id "base"
+    id 'java'
+    id 'xyz.wagyourtail.unimined' version '1.4.2-SNAPSHOT'
+    id 'io.github.headlesshq.headlessmc-gradle-plugin' version '0.3.0'
 }
 
-group = project.maven_group
-version = project.mod_version
+group 'me.earth.headlessmc'
+version "${project(':hmc-optimizations-api').project_version}"
 
-ext {
-    sharedMainJava = rootProject.file("src/main/java")
-    sharedClientJava = rootProject.file("src/client/java")
-    sharedClientResources = rootProject.file("src/client/resources")
-    releaseDirectory = rootProject.layout.buildDirectory.dir("libs")
+base {
+    archivesName = "hmc-optimizations-${minecraft_version}"
 }
 
-subprojects {
-    group = rootProject.group
-    version = rootProject.version
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
 
-    plugins.withId("java") {
-        java {
-            toolchain.languageVersion = JavaLanguageVersion.of(25)
-        }
+sourceSets {
+    fabric
+    neoforge
+    lexforge
+}
 
-        tasks.withType(JavaCompile).configureEach {
-            options.encoding = "UTF-8"
-            options.release = 25
-        }
+repositories {
+    mavenCentral()
+    maven {
+        url = "https://maven.neoforged.net/releases"
+    }
+    maven {
+        url = "https://maven.neoforged.net/snapshots"
+    }
+    maven {
+        url = "https://files.minecraftforge.net/maven"
+    }
+    maven {
+        name = "sponge"
+        url = "https://repo.spongepowered.org/maven"
+    }
+    maven {
+        url = "https://maven.wagyourtail.xyz/releases"
+    }
 
-        tasks.withType(Jar).configureEach {
-            from(rootProject.file("../LICENSE")) {
-                rename { "LICENSE_hmc-optimizations" }
-            }
-
-            manifest {
-                attributes(
-                    "Implementation-Title": "HMC-Optimizations",
-                    "Implementation-Version": project.version
-                )
-            }
-        }
+    maven {
+        name = '3arthMaven'
+        url = 'https://3arthqu4ke.github.io/maven'
     }
 }
 
-def expectedLoaderJars = [
-    fabric: "${archives_base_name}-${minecraft_version}-${mod_version}-fabric.jar",
-    forge: "${archives_base_name}-${minecraft_version}-${mod_version}-lexforge.jar",
-    neoforge: "${archives_base_name}-${minecraft_version}-${mod_version}-neoforge.jar"
-]
+unimined.minecraft {
+    version project.minecraft_version
 
-tasks.named("clean") {
-    dependsOn(subprojects.collect { "${it.path}:clean" })
+    mappings {
+        mojmap()
+        // intermediary()
+        // yarn(1)
+
+        devFallbackNamespace "mojmap"
+
+        /*stub.withMappings("intermediary", ["yarn"]) {
+            c("net/minecraft/class_1927", []) {
+                m("method_55109", "()Lnet/minecraft/class_243;", ["getPos"])
+            }
+        }*/
+    }
+
+    runs {
+        // https://github.com/unimined/unimined/issues/98
+        off = true
+    }
+
+    defaultRemapJar = false
 }
 
-tasks.register("verifyLoaderJars") {
-    group = "verification"
-    description = "Checks that the three release jars contain the correct loader metadata."
-    dependsOn(expectedLoaderJars.keySet().collect { ":${it}:build" })
+unimined.minecraft(sourceSets.fabric) {
+    combineWith(sourceSets.main)
 
-    doLast {
-        def outputDirectory = releaseDirectory.get().asFile
-        def actualJars = outputDirectory.listFiles({ file -> file.name.endsWith(".jar") } as FileFilter)
-            ?.collect { it.name }
-            ?.sort() ?: []
-        def expectedJars = expectedLoaderJars.values().sort()
-        if (actualJars != expectedJars) {
-            throw new GradleException("Expected release jars ${expectedJars}, found ${actualJars}")
-        }
+    fabric {
+        loader project.fabric_version
+    }
 
-        def expectedEntries = [
-            fabric: "fabric.mod.json",
-            forge: "META-INF/mods.toml",
-            neoforge: "META-INF/neoforge.mods.toml"
-        ]
-        expectedLoaderJars.each { loader, fileName ->
-            def jarFile = new java.util.zip.ZipFile(new File(outputDirectory, fileName))
-            try {
-                if (jarFile.getEntry(expectedEntries[loader]) == null) {
-                    throw new GradleException("${fileName} is missing ${expectedEntries[loader]}")
-                }
-                if (jarFile.getEntry("hmcoptimizations.client.mixins.json") == null) {
-                    throw new GradleException("${fileName} is missing the shared Mixin configuration")
-                }
-            } finally {
-                jarFile.close()
-            }
-        }
+    defaultRemapJar = true
+}
+
+unimined.minecraft(sourceSets.neoforge) {
+    combineWith(sourceSets.main)
+
+    neoForged {
+        loader project.neoforge_version
+        mixinConfig 'hmcoptimizations.mixins.json'
+    }
+
+    minecraftRemapper.config {
+        // neoforge adds 1 conflict, where 2 interfaces have a method with the same name on yarn/mojmap,
+        // but the method has different names in the intermediary mappings.
+        // this is a conflict because they have a class that extends both interfaces.
+        // this shouldn't be a problem as long as named mappings don't make the name of those 2 methods different.
+        ignoreConflicts(true)
+    }
+
+    defaultRemapJar = true
+}
+
+unimined.minecraft(sourceSets.lexforge) {
+    combineWith(sourceSets.main)
+
+    minecraftForge {
+        loader project.lexforge_version
+        mixinConfig 'hmcoptimizations.mixins.json'
+    }
+
+    minecraftRemapper.config {
+        ignoreConflicts(true)
+    }
+
+    defaultRemapJar = true
+}
+
+configurations {
+    mainImplementation
+    // bundled into the release jars
+    jarLibs {
+        transitive = false
+    }
+
+    for (String name : ['implementation', 'fabricImplementation', 'neoforgeImplementation', 'lexforgeImplementation']) {
+        getByName(name).extendsFrom(jarLibs)
     }
 }
 
-tasks.named("build") {
-    dependsOn(tasks.named("verifyLoaderJars"))
+configurations {
+    lwjglAgent.extendsFrom runtimeOnly
+}
+
+dependencies {
+    compileOnly 'org.spongepowered:mixin:0.8.5-SNAPSHOT'
+    jarLibs project(':hmc-optimizations-api')
+    lwjglAgent 'me.earth.headlessmc:headlessmc-lwjgl:2.1.0'
+}
+
+// The release jars contain the remapped mod and the hmc-optimizations-api
+for (String loader : ['fabric', 'neoforge', 'lexforge']) {
+    def platform = loader // groovy weirdness, the closures need their own variable
+    def remapJar = tasks.named("remap${platform.capitalize()}Jar", AbstractArchiveTask)
+    def releaseJar = tasks.register("${platform}ReleaseJar", Jar) {
+        group = 'build'
+        archiveClassifier = "${platform}-release"
+        dependsOn(remapJar)
+        from({ zipTree(remapJar.get().archiveFile) }) {
+            exclude 'META-INF/MANIFEST.MF'
+        }
+        from({ configurations.jarLibs.collect { zipTree(it) } }) {
+            exclude 'META-INF/MANIFEST.MF'
+        }
+    }
+
+    tasks.named('build') { dependsOn(releaseJar) }
+}
+
+/* runs.off = true afterEvaluate {
+    fabricRunClient {
+        standardInput = System.in
+        if (rootProject.property('hmc.lwjgl').toBoolean()) {
+            jvmArgs += ["-javaagent:${configurations.lwjglAgent.files.iterator().next()}"]
+            systemProperties['joml.nounsafe'] = 'true'
+            systemProperties['fabric.systemLibraries'] = "${configurations.lwjglAgent.files.iterator().next()}"
+        }
+    }
+}*/
+
+jar {
+    enabled = false
+}
+
+processFabricResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+processNeoforgeResources {
+    inputs.property "version", project.version
+
+    filesMatching("META-INF/neoforge.mods.toml") {
+        expand "version": project.version
+    }
+}
+
+processLexforgeResources {
+    inputs.property "version", project.version
+
+    filesMatching("META-INF/mods.toml") {
+        expand "version": project.version
+    }
+}
+
+// Forge Runs seem to have problems running from the build/classes folder
+// So instead we just run from the built jar
+/* runs off
+afterEvaluate {
+    lexforgeRunClient {
+        dependsOn(lexforgeJar)
+        classpath = classpath.filter {
+            !it.toString().contains('hmc-optimizations/build/classes/java/'.replace('/', File.separator))
+                    && !it.toString().contains('hmc-optimizations/build/resources/'.replace('/', File.separator))
+        }
+
+        classpath += files("${projectDir}/build/libs/hmc-optimizations-${version}-lexforge-dev.jar".replace('/', File.separator))
+    }
+
+    neoforgeRunClient {
+        dependsOn(neoforgeJar)
+        classpath = classpath.filter {
+            !it.toString().contains('hmc-optimizations/build/classes/java/'.replace('/', File.separator))
+                    && !it.toString().contains('hmc-optimizations/build/resources/'.replace('/', File.separator))
+        }
+
+        classpath += files("${projectDir}/build/libs/hmc-optimizations-${version}-neoforge-dev.jar".replace('/', File.separator))
+    }
+}*/
+
+tasks.withType(org.gradle.jvm.tasks.Jar).configureEach {
+    from("LICENSE") {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+        rename { "${it}_${project.archivesBaseName}" }
+    }
+
+    manifest {
+        attributes(
+            'Implementation-Title': 'HMC-Optimizations',
+            'MixinConfigs': "hmcoptimizations.mixins.json",
+            'Implementation-Version': project.version,
+        )
+    }
+}
+
+for (Modlauncher mLauncher : Modlauncher.values()) {
+    def ml = mLauncher // groovy weirdness, need to do this
+    tasks.register("${ml.officialName}RunWithHeadlessMc", HeadlessMcRunTask) {
+        group 'headlessmc'
+        from(tasks.named("remap${ml.hmcName.capitalize()}Jar"))
+        into(modsDirectory)
+
+        version = "${minecraft_version}"
+        modlauncher = ml
+        lwjgl = rootProject.property('hmc.lwjgl').toBoolean()
+        dummyAssets = rootProject.property('hmc.dummy.assets').toBoolean()
+        mcRuntimeTest = rootProject.property('mc.runtime.test').toBoolean()
+        // specifics = true
+    }
 }
