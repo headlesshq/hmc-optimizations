@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "hmc_optimizations",
+  "version": "${version}",
+
+  "name": "HMC-Optimizations",
+  "description": "Version specific optimizations for HeadlessMC",
+  "authors": [
+    "3arthqu4ke"
+  ],
+  "contact": {
+    "homepage": "https://github.com/headlesshq/hmc-optimizations",
+    "sources": "https://github.com/headlesshq/hmc-optimizations"
+  },
+
+  "license": "MIT",
+
+  "environment": "*",
+  "mixins": [
+    "hmcoptimizations.mixins.json"
+  ],
+
+  "depends": {
+    "fabricloader": ">=0.14.19",
+    "minecraft": "~1.21.10",
+    "java": ">=8"
+  }
+}
