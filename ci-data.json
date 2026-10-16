@@ -220,7 +220,7 @@
 			"modloader": "forge",
 			"regex": ".*forge.*",
 			"java": "8",
-			"xvfb": false
+			"xvfb": true
 		}
 	]
 }

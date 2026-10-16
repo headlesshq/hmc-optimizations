@@ -1,24 +1,13 @@
 {
   "required": true,
+  "minVersion": "0.7.11",
   "package": "me.earth.headlessmc.optimizations.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
-    "MixinCommandContextImpl",
-    "MixinLoadingScreenRenderer",
-    "MixinMinecraft",
-    "MixinFMLClientHandler",
-    "gui.MixinFontRenderer",
-    "gui.MixinGuiMainMenu",
-    "renderer.MixinDynamicTexture",
-    "renderer.MixinGlStateManager",
-    "renderer.MixinRenderGlobal",
-    "renderer.MixinRenderManager",
-    "renderer.MixinTextureManager",
-    "renderer.MixinTextureUtil",
-    "resources.MixinSimpleReloadableResourceManager",
-    "util.MixinMouseHelper"
   ],
   "client": [
+    "MixinMinecraft",
+    "MixinScreenShotHelper"
   ],
   "injectors": {
     "defaultRequire": 1
