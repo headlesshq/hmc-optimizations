@@ -96,6 +96,13 @@
 			"java": "17"
 		},
 		{
+			"dir": "1_18",
+			"mc": "1.18.2",
+			"lex": "40.2.18",
+			"neo": "0",
+			"java": "17"
+		},
+		{
 			"dir": "1_17",
 			"mc": "1.17.1",
 			"lex": "37.1.1",
@@ -430,6 +437,22 @@
 		},
 		{
 			"mc": "1.19.4",
+			"type": "fabric",
+			"modloader": "fabric",
+			"regex": ".*fabric.*",
+			"java": "17",
+			"xvfb": true
+		},
+		{
+			"mc": "1.18.2",
+			"type": "lexforge",
+			"modloader": "forge",
+			"regex": ".*forge.*",
+			"java": "17",
+			"xvfb": true
+		},
+		{
+			"mc": "1.18.2",
 			"type": "fabric",
 			"modloader": "fabric",
 			"regex": ".*fabric.*",
