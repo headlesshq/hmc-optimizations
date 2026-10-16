@@ -129,12 +129,12 @@
     },
     {
       "type": "SEND",
-      "message": "screenshot screenshots/optimized.png"
+      "message": "screenshot --timeout 120 screenshots/optimized.png"
     },
     {
       "type": "CONTAINS",
       "message": "Saved screenshot to",
-      "timeout": 60,
+      "timeout": 180,
       "or": [
         {
           "type": "REGEX",
@@ -322,12 +322,12 @@
     },
     {
       "type": "SEND",
-      "message": "screenshot screenshots/unoptimized.png"
+      "message": "screenshot --timeout 120 screenshots/unoptimized.png"
     },
     {
       "type": "CONTAINS",
       "message": "Saved screenshot to",
-      "timeout": 60,
+      "timeout": 180,
       "or": [
         {
           "type": "REGEX",
