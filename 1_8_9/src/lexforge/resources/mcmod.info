@@ -1,0 +1,16 @@
+[
+  {
+    "modid": "hmc_optimizations",
+    "name": "HMC-Optimizations",
+    "description": "Version specific optimizations for HeadlessMC",
+    "version": "${version}",
+    "mcversion": "1.8.9",
+    "url": "https://github.com/headlesshq/hmc-optimizations",
+    "updateUrl": "",
+    "authorList": ["3arthqu4ke"],
+    "credits": "",
+    "logoFile": "/assets/modid/icon.png",
+    "screenshots": [],
+    "dependencies": []
+  }
+]

@@ -59,6 +59,13 @@
 			"lex": "14.23.5.2860",
 			"neo": "0",
 			"java": "8"
+		},
+		{
+			"dir": "1_8_9",
+			"mc": "1.8.9",
+			"lex": "11.15.1.2318-1.8.9",
+			"neo": "0",
+			"java": "8"
 		}
 	],
 	"run_data": [
@@ -216,6 +223,14 @@
 		},
 		{
 			"mc": "1.12.2",
+			"type": "lexforge",
+			"modloader": "forge",
+			"regex": ".*forge.*",
+			"java": "8",
+			"xvfb": true
+		},
+		{
+			"mc": "1.8.9",
 			"type": "lexforge",
 			"modloader": "forge",
 			"regex": ".*forge.*",
