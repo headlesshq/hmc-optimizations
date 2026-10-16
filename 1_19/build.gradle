@@ -23,7 +23,7 @@ plugins {
 }
 
 group 'me.earth.headlessmc'
-version '0.4.0'
+version "${project(':hmc-optimizations-api').project_version}"
 
 base {
     archivesName = "hmc-optimizations-${minecraft_version}"
@@ -110,6 +110,14 @@ unimined.minecraft(sourceSets.lexforge) {
 
 configurations {
     mainImplementation
+    // bundled into the release jars
+    jarLibs {
+        transitive = false
+    }
+
+    for (String name : ['implementation', 'fabricImplementation', 'lexforgeImplementation']) {
+        getByName(name).extendsFrom(jarLibs)
+    }
 }
 
 configurations {
@@ -118,8 +126,27 @@ configurations {
 
 dependencies {
     compileOnly 'org.spongepowered:mixin:0.8.5-SNAPSHOT'
-    compileOnly 'me.earth.headlessmc:headlessmc-api:2.1.0'
+    jarLibs project(':hmc-optimizations-api')
     lwjglAgent 'me.earth.headlessmc:headlessmc-lwjgl:2.1.0'
+}
+
+// The release jars contain the remapped mod and the hmc-optimizations-api
+for (String loader : ['fabric', 'lexforge']) {
+    def platform = loader // groovy weirdness, the closures need their own variable
+    def remapJar = tasks.named("remap${platform.capitalize()}Jar", AbstractArchiveTask)
+    def releaseJar = tasks.register("${platform}ReleaseJar", Jar) {
+        group = 'build'
+        archiveClassifier = "${platform}-release"
+        dependsOn(remapJar)
+        from({ zipTree(remapJar.get().archiveFile) }) {
+            exclude 'META-INF/MANIFEST.MF'
+        }
+        from({ configurations.jarLibs.collect { zipTree(it) } }) {
+            exclude 'META-INF/MANIFEST.MF'
+        }
+    }
+
+    tasks.named('build') { dependsOn(releaseJar) }
 }
 
 /* runs.off = true afterEvaluate {
