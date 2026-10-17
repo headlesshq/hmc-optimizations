@@ -79,7 +79,7 @@ Per metric mean, median and p95 are reported across all samples of all repetitio
 - **Growing classes**: classes that grew in the class histograms. "Monotonic" and a high "Growing steps" percentage are the interesting ones. Growth in chunk, structure or palette classes while the player explores is world data, not a leak. Look for classes unrelated to what the test does, or ones that do not stop growing once the player stops moving.
 - **Long lived allocations (JFR OldObjectSample)**: allocation sites of objects still alive at the end, with the GC root that holds them. Open `leak.jfr` in JDK Mission Control for path-to-GC-root.
 - **Eclipse MAT**: `end_Leak_Suspects.zip` is the MAT leak suspects report of the end heap dump. Unzip and open `index.html`. A suspect that is only "the server's chunk map holds 30% of the heap" is normal.
-Use a longer `--duration` and a stationary player (omit `--move-every`) to separate warm-up growth from leaks.
+Use a longer `--duration` and a stationary player (`--move-every 0`, `leak` teleports every 30 s by default) to separate warm-up growth from leaks.
 
 ## Reading the render hotspot report
 
@@ -87,30 +87,86 @@ JFR records `ExecutionSample` (CPU, every `--cpu-period` ms) and `ObjectAllocati
 
 ## Validation results
 
-Minecraft 1.21.4, Fabric, Temurin 21, `-Xmx2G`, headless (`-lwjgl`), 2 repetitions x 90 s after 30 s warmup, sampled every 5 s (`benchmark/bench.py compare`).
+Minecraft 1.21.4, Fabric, Temurin 21, `-Xmx2G`, headless (`-lwjgl`), 2 repetitions x 120 s after 30 s warmup, sampled every 5 s, NMT every 10 s (`benchmark/bench.py compare`, 2026-10-17). The charts below are copied from that run into [`charts/`](charts).
 
 | Metric (mean) | vanilla | optimized | optimize-off |
 |---|---|---|---|
-| FPS | 2,859 | 847,422 (render skipped) | 2,576 |
-| Client MSPT | 1.3 | 1.4 | 1.4 |
-| Heap used (MB) | 683 | 458 (-33%) | 704 |
-| Heap committed (MB) | 1,124 | 639 (-43%) | 1,098 |
-| Heap after GC (MB) | 416 | 391 (-6%) | 395 |
-| Process RSS (MB) | 1,609 | 1,158 (-28%) | 1,618 |
-| NMT committed total (MB) | 1,455 | 947 (-35%) | 1,446 |
-| NMT class/metaspace (MB) | 21.7 | 21.6 | 21.5 |
-| GC pauses per minute | 458 | 172 (-63%) | 342 |
-| GC pause time (ms/min) | 926 | 468 (-49%) | 906 |
+| FPS | 3,782 | 906,003 (render skipped) | 4,237 |
+| Client MSPT | 1.3 | 1.4 | 1.3 |
+| Heap used (MB) | 599 | 482 (-20%) | 614 |
+| Heap committed (MB) | 982 | 691 (-30%) | 980 |
+| Heap after GC (MB) | 309 | 312 (+1%) | 300 |
+| Process RSS (MB) | 1,447 | 1,113 (-23%) | 1,511 |
+| NMT committed total (MB) | 1,316 | 1,014 (-23%) | 1,318 |
+| NMT class/metaspace (MB) | 21.7 | 21.5 | 21.6 |
+| NMT GC (MB) | 76.6 | 69.8 (-9%) | 76.4 |
+| GC pauses per minute | 455 | 146 (-68%) | 353 |
+| GC pause time (ms/min) | 447 | 265 (-41%) | 352 |
 
-`optimize-off` behaves like vanilla (FPS -10%, memory within noise), so the mod costs nothing when disabled. The FPS figure of the optimized client is not a real frame rate: the optimizations skip the render work, so the loop is only limited by the (redirected) window calls. Short runs and 2 repetitions: treat differences of a few percent as noise.
+`optimize-off` behaves like vanilla (memory within noise), so the mod costs nothing when disabled. The live heap (heap after GC) is the same in all scenarios: the optimized client saves memory by allocating less (fewer GCs, less heap committed), not by holding less. The FPS figure of the optimized client is not a real frame rate: the optimizations skip the render work, so the loop is only limited by the (redirected) window calls. Short runs and 2 repetitions: treat differences of a few percent as noise.
 
-### Leak run (optimized, 240 s, teleporting 256 blocks every 30 s)
+![Process memory, RSS (MB)](charts/compare-rss_mb.svg)
 
-- Heap after full GC: 279, 346, 410, 420, 419 MB at minutes 0 to 4. It rises while new chunks load and plateaus once the world area stops growing.
-- Growing classes (`long[]`, `StructureTemplate$StructureBlockInfo`, `PalettedContainer`, `ReentrantLock`, `DensityFunctions`) are chunk, structure and worldgen data created by the server thread because the player keeps moving. Not rooted in the mod.
-- MAT leak suspects: suspect 1 is the server `ChunkMap` (`class_3898`, 29.8% of the heap, 127 MB, held by the Server thread), suspect 2 is the 12,421 loaded classes (10.3%). Both are normal Minecraft state. No hmc-optimizations class appears in suspects, growing classes or OldObjectSample roots.
-- NMT class/metaspace and thread counts are flat (21.5 -> 22.2 MB, 41 -> 40 threads).
-- Limitation: 4 minutes is short. Run `leak --duration 3600` without `--move-every` for a stricter test.
+![Native memory committed (MB)](charts/compare-nmt_total_mb.svg)
+
+![Heap used (MB)](charts/compare-heap_used_mb.svg)
+
+![Heap after GC (MB)](charts/compare-heap_after_gc_mb.svg)
+
+![GC pauses per minute](charts/compare-gc_per_min.svg)
+
+![GC pause time (ms per minute)](charts/compare-gc_pause_ms_per_min.svg)
+
+![Process memory over time (MB)](charts/compare-rss_mb-over-time.svg)
+
+![Heap used over time (MB)](charts/compare-heap_used_mb-over-time.svg)
+
+### Leak runs (optimized)
+
+Standing still, 1200 s (`leak --duration 1200 --histogram-interval 120 --move-every 0 --heap-dumps`):
+
+- Live heap after full GC: 284 MB in all 11 histograms. No class grew by 256 KB or more. No leak.
+- NMT class/metaspace flat (21.7 -> 21.8 MB), NMT total 917 -> 896 MB, threads 35 -> 24 (idle worldgen workers exit).
+- RSS 1,052 -> 1,087 MB, outside the memory NMT tracks (native libraries, malloc). Small, but run longer to see whether it levels off.
+
+![Memory over time, standing still (MB)](charts/leak-standing.svg)
+
+Teleporting 256 blocks every 30 s, 900 s (the `leak` default):
+
+- Live heap after full GC: 284, 420, 425, 437, 449, 448, 458 MB. It rises while new chunks load and flattens.
+- Growing classes (`long[]`, `BlockPos`, `StructureTemplate$StructureBlockInfo`, `PalettedContainer`, `DensityFunctions`) are chunk, structure and worldgen data of the integrated server.
+- MAT leak suspects: the server `ChunkMap` (29% of the heap, 129 MB) and the loaded classes. Both are normal Minecraft state. No hmc-optimizations class appears in suspects, growing classes or OldObjectSample roots.
+
+![Memory over time, teleporting (MB)](charts/leak-moving.svg)
+
+### Where memory could still be saved
+
+Retained heap of the optimized client by area, from the Eclipse MAT dominator tree (grouped by class) of the end heap dump of the stationary leak run (273 MB retained). Each object is counted once, under the object that keeps it alive. Made by hand from `ParseHeapDump.sh end.hprof '-command=dominator_tree -groupBy BY_CLASS' -format=csv -unzip org.eclipse.mat.api:query`, `bench.py` does not produce this chart.
+
+![Retained heap by area (MB)](charts/heap-by-area.svg)
+
+| Area | MB | Contents |
+|---|---|---|
+| Baked block models | 26.4 | `SimpleBakedModel` 10.4, `MultiPartBakedModel` 9.0, `ModelManager` 7.0 (17,531 models) |
+| Fonts | 13.0 | 123,258 `UnihexProvider` (Unifont) glyphs in `FontManager` |
+| Level and entity renderers | 10.0 | `LevelRenderer` 6.3, `EntityRenderDispatcher` 3.7 |
+| Sound and language | 3.4 | `SoundManager` 2.4, `ClientLanguage` 1.0 |
+| Integrated server | 48.4 | `ChunkMap` 27.6, light engine 8.0, structure templates 7.1. Singleplayer only, a client on a server does not have it |
+| Client world state | 34.8 | `BlockState` 15.2, `ClientLevel` 12.4, voxel shapes 6.4 |
+| Loaded classes | 58.8 | 12,377 classes, `KnotClassLoader` |
+| Open jars and resource packs | 16.2 | 85 `ZipFile$Source`, the client jar `ZipFileSystem` |
+| DataFixerUpper | 9.6 | type templates and schemas |
+| Netty | 8.0 | 2 pooled `PoolChunk`s |
+
+Candidates, largest first:
+
+1. **Heap headroom and GC**: the optimized client commits 556-691 MB of heap for 284 MB of live data, and G1 itself takes 70 MB (NMT GC). `-XX:+UseSerialGC`, or G1 with `-XX:G1PeriodicGCInterval` and a lower `-XX:MaxHeapFreeRatio`, may save a few hundred MB of RSS without any mod code (untested). Part of the churn comes from the HeadlessMc lwjgl redirections boxing a `Double` per `glfwGetTime` call (see the render report).
+2. **Baked block models** (about 26 MB, more with real assets): nothing renders them headless. Particles and some mods read models, and `optimize off` at runtime would need a resource reload.
+3. **Unifont glyphs** (13 MB): a headless client draws no text. ASCII widths come from the bitmap provider, only non-Latin text widths would change.
+4. **Animated textures**: the largest remaining render cost (see below) and native memory for the frames, which dummy assets do not show.
+5. **Smaller**: level/entity renderers (10 MB), sound registry and language (3.4 MB). Per thread biome temperature caches (`Biome$1`, `Long2FloatLinkedOpenHashMap`) held 20 MB on worldgen worker threads in the teleporting run, singleplayer only and released when the workers exit.
+
+Dummy assets make models, fonts and textures smaller than with the real resource pack, so the headless-only areas are likely larger in practice.
 
 ### Render hotspots with the optimizations on (150 s JFR)
 

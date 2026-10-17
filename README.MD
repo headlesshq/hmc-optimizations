@@ -32,29 +32,23 @@ If you really want to bring your memory footprint down,
 we also recommend that you configure HeadlessMc to use
 dummy assets via the `hmc.assets.dummy` property.
 
-A headless SinglePlayer world on Minecraft 1.21.4 (Fabric, dummy assets), measured with the [benchmark](benchmark):
-
-| Metric               | Without HMC-Optimizations | With HMC-Optimizations |
-|----------------------|---------------------------|------------------------|
-| Heap used            | 683 MB                    | 458 MB (-33%)          |
-| Process memory (RSS) | 1,609 MB                  | 1,158 MB (-28%)        |
-| GC pauses per minute | 458                       | 172 (-63%)             |
-
 HMC-Optimizations currently supports the following Minecraft versions and modloaders:
-| Version         | Forge | Fabric | NeoForge |
-|-----------------|-------|--------|----------|
-| 26.1 - 26.3     | ✅    | ✅     | ✅       |
-| 1.21 - 1.21.11  | ✅    | ✅     | ✅       |
-| 1.20.6          | ✅    | ✅     | ✅       |
-| 1.19.4          | ✅    | ✅     | —        |
-| 1.18.2          | ✅    | ✅     | —        |
-| 1.17.1          | ✅    | ✅     | —        |
-| 1.16.5          | ✅    | ✅     | —        |
-| 1.12.2          | ✅    | ✅     | —        |
-| 1.8.9           | ✅    | —      | —        |
-| 1.7.10          | ✅    | —      | —        |
 
-Download the jar for your version and modloader from the [releases](https://github.com/headlesshq/hmc-optimizations/releases).
+| Version        | Forge | Fabric | NeoForge |
+|----------------|-------|--------|----------|
+| 26.1 - 26.3    | ✅     | ✅      | ✅        |
+| 1.21 - 1.21.11 | ✅     | ✅      | ✅        |
+| 1.20.6         | ✅     | ✅      | ✅        |
+| 1.19.4         | ✅     | ✅      | —        |
+| 1.18.2         | ✅     | ✅      | —        |
+| 1.17.1         | ✅     | ✅      | —        |
+| 1.16.5         | ✅     | ✅      | —        |
+| 1.12.2         | ✅     | ✅      | —        |
+| 1.8.9          | ✅     | —      | —        |
+| 1.7.10         | ✅     | —      | —        |
+
+Download the jar for your version and modloader from
+the [releases](https://github.com/headlesshq/hmc-optimizations/releases).
 For every Minecraft version there is a `<mc>-latest` release, e.g. `1.21.4-latest`.
 
 ### Turning optimizations on and off
@@ -62,13 +56,13 @@ For every Minecraft version there is a `<mc>-latest` release, e.g. `1.21.4-lates
 The optimizations are on by default. With [HMC-Specifics](https://github.com/headlesshq/hmc-specifics) 3
 installed, the `optimize` command controls them at runtime:
 
-| Command                | Effect                                                                                  |
-|------------------------|-----------------------------------------------------------------------------------------|
-| `optimize`             | Shows whether the optimizations are on.                                                 |
-| `optimize on`          | Turns the optimizations on.                                                             |
-| `optimize off`         | Turns the optimizations off, the game renders normally.                                 |
-| `optimize toggle`      | Turns them off if they are on and on if they are off.                                   |
-| `optimize --frames <n>`| Renders the next `n` frames without optimizations, then turns them back on by itself.   |
+| Command                 | Effect                                                                                |
+|-------------------------|---------------------------------------------------------------------------------------|
+| `optimize`              | Shows whether the optimizations are on.                                               |
+| `optimize on`           | Turns the optimizations on.                                                           |
+| `optimize off`          | Turns the optimizations off, the game renders normally.                               |
+| `optimize toggle`       | Turns them off if they are on and on if they are off.                                 |
+| `optimize --frames <n>` | Renders the next `n` frames without optimizations, then turns them back on by itself. |
 
 HMC-Optimizations does not need HMC-Specifics, it only registers the command for it
 (via `META-INF/hmc-specifics-commands`).
@@ -81,7 +75,8 @@ On Minecraft versions that cannot turn the optimizations off at runtime, this pr
 When the game is not truly headless, e.g. when running HeadlessMC with a real or
 a virtual display like [Xvfb](https://www.x.org/releases/X11R7.6/doc/man/man1/Xvfb.1.xhtml)
 instead of the LWJGL redirection, you can still take screenshots while the optimizations are on:
-every screenshot (F2, the `screenshot` command of HMC-Specifics, [HMC-Prometheus](https://github.com/headlesshq/hmc-prometheus), ...)
+every screenshot (F2, the `screenshot` command of
+HMC-Specifics, [HMC-Prometheus](https://github.com/headlesshq/hmc-prometheus), ...)
 is delayed until a single frame has been rendered without optimizations.
 Because chunks are only built on rendered frames, a single frame might not show all distant terrain yet,
 use `optimize --frames 20` before taking a screenshot to give the world some frames to build.
@@ -106,6 +101,14 @@ import me.earth.headlessmc.optimizations.api.HmcOptimizations;
 ```
 
 ### Benchmarks
+
+A headless SinglePlayer world on Minecraft 1.21.4 (Fabric, dummy assets), measured with the [benchmark](benchmark):
+
+| Metric               | Without HMC-Optimizations | With HMC-Optimizations |
+|----------------------|---------------------------|------------------------|
+| Heap used            | 683 MB                    | 458 MB (-33%)          |
+| Process memory (RSS) | 1,609 MB                  | 1,158 MB (-28%)        |
+| GC pauses per minute | 458                       | 172 (-63%)             |
 
 The [benchmark](benchmark) folder contains scripts that compare the performance and memory usage of the
 game with and without HMC-Optimizations, look for memory leaks, and find the rendering code that still
