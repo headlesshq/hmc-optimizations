@@ -12,6 +12,9 @@ description = '''
     Version specific optimizations for HeadlessMC
 '''
 
+[[mixins]]
+config = "hmcoptimizations.mixins.json"
+
 [[dependencies.hmc_optimizations]]
 modId = "minecraft"
 mandatory = true
