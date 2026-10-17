@@ -1,0 +1,225 @@
+import io.github.headlesshq.headlessmc.gradle.HeadlessMcRunTask
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import me.earth.headlessmc.launcher.modlauncher.Modlauncher
+
+buildscript {
+    repositories {
+        maven {
+            name = "3arthMaven"
+            url = "https://3arthqu4ke.github.io/maven"
+        }
+    }
+
+    dependencies {
+        classpath "me.earth.headlessmc:headlessmc-launcher:2.1.0"
+        classpath "io.github.headlesshq:headlessmc-gradle-plugin:0.3.0"
+        // not 100% sure, the headlessmc-launcher maven metadata exposes this with runtime scope? But still needed
+        // Unable to load class 'org.semver4j.Semver'.
+        // TODO: file report?
+        // This is an unexpected error. Please file a bug containing the idea.log file.
+        classpath "org.semver4j:semver4j:5.3.0"
+    }
+}
+
+plugins {
+    id 'java'
+    id 'xyz.wagyourtail.unimined' version '1.3.10'
+    id 'com.gradleup.shadow' version '8.3.0'
+    id 'io.github.headlesshq.headlessmc-gradle-plugin' version '0.3.0'
+}
+
+group 'me.earth.headlessmc'
+version "${project(':hmc-optimizations-api').project_version}"
+
+base {
+    archivesName = "hmc-optimizations-${minecraft_version}"
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+// Legacy Fabric is not supported, HeadlessMc can not launch it
+sourceSets {
+    lexforge
+}
+
+sourceSets {
+    lexforge {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url = "https://files.minecraftforge.net/maven"
+    }
+    maven {
+        name = 'impactdevelopment-repo'
+        url = 'https://impactdevelopment.github.io/maven/'
+    }
+    maven {
+        name = "sponge"
+        url = "https://repo.spongepowered.org/maven"
+    }
+    maven {
+        url = "https://maven.wagyourtail.xyz/releases"
+    }
+
+    maven {
+        name = '3arthMaven'
+        url = 'https://3arthqu4ke.github.io/maven'
+    }
+}
+
+unimined.minecraft {
+    version project.minecraft_version
+
+    mappings {
+        searge()
+        mcp("stable", "12-1.7.10")
+    }
+
+    runs {
+        // https://github.com/unimined/unimined/issues/98
+        off = true
+    }
+
+    defaultRemapJar = false
+}
+
+unimined.minecraft(sourceSets.lexforge) {
+    combineWith(sourceSets.main)
+
+    minecraftForge {
+        loader project.lexforge_version
+        mixinConfig 'hmcoptimizations.mixins.json'
+    }
+
+    minecraftRemapper.config {
+        ignoreConflicts(true)
+    }
+
+    defaultRemapJar = true
+}
+
+
+configurations {
+    mainImplementation
+    implementation {
+        extendsFrom lexforgeImplementation
+    }
+
+    jarLibs
+    implementation.extendsFrom jarLibs
+    lwjglAgent.extendsFrom runtimeOnly
+}
+
+sourceSets {
+    main {
+        compileClasspath += configurations.mainImplementation
+        runtimeClasspath += configurations.mainImplementation
+    }
+}
+
+dependencies {
+    implementation 'net.minecraft:launchwrapper:1.12'
+    implementation 'org.spongepowered:mixin:0.7.11-SNAPSHOT'
+    lexforgeImplementation 'org.spongepowered:mixin:0.7.11-SNAPSHOT'
+
+    lwjglAgent 'me.earth.headlessmc:headlessmc-lwjgl:2.1.0'
+    jarLibs project(':hmc-optimizations-api')
+    jarLibs 'com.github.ImpactDevelopment:SimpleTweaker:1.2'
+    // the ASM of launchwrapper on 1.7.10 prevents us from going to a newer Mixin version
+    jarLibs('org.spongepowered:mixin:0.7.11-SNAPSHOT') {
+        exclude module: 'launchwrapper'
+        exclude module: 'guava'
+        exclude module: 'gson'
+        exclude module: 'commons-io'
+    }
+}
+
+
+jar {
+    enabled = false
+}
+
+processLexforgeResources {
+    inputs.property "version", project.version
+
+    filesMatching("META-INF/mods.toml") {
+        expand "version": project.version
+    }
+
+    filesMatching("mcmod.info") {
+        expand "version": project.version
+    }
+}
+
+// Forge Runs seem to have problems running from the build/classes folder
+// So instead we just run from the built jar
+/* runs.off = true afterEvaluate {
+    lexforgeRunClient {
+        dependsOn(lexforgeJar)
+        classpath = classpath.filter {
+            !it.toString().contains('hmc-optimizations/build/classes/java/'.replace('/', File.separator))
+                    && !it.toString().contains('hmc-optimizations/build/resources/'.replace('/', File.separator))
+        }
+
+        classpath += files("${projectDir}/build/libs/hmc-optimizations-${version}-lexforge-dev.jar".replace('/', File.separator))
+    }
+}*/
+
+tasks.withType(org.gradle.jvm.tasks.Jar).configureEach {
+    from("LICENSE") {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+        rename { "${it}_${project.archivesBaseName}" }
+    }
+
+    manifest {
+        attributes(
+            'Implementation-Title': 'HMC-Optimizations',
+            'TweakClass': 'me.earth.headlessmc.optimizations.tweaker.HmcOptimizationsTweaker',
+            'MixinConfigs': "hmcoptimizations.mixins.json",
+            'Implementation-Version': project.version,
+        )
+    }
+}
+
+for (Modlauncher mLauncher : Modlauncher.values()) {
+    def ml = mLauncher
+    if (ml == Modlauncher.LEXFORGE) {
+        def platform = ml.hmcName
+        def platform_capitalized = ml.hmcName.capitalize()
+        def remapJarTask = tasks.named("remap${platform_capitalized}Jar", AbstractArchiveTask).get()
+        remapJarTask.archiveClassifier.set("${platform}-remapped")
+        def shadowTask = tasks.register("${platform}ShadowJar", ShadowJar) {
+            dependsOn(remapJarTask)
+            it.group = 'build'
+            it.archiveClassifier = "${platform}-release"
+            from remapJarTask.outputs
+            it.configurations += [ project.configurations.jarLibs ]
+            // Mixin is signed
+            exclude 'META-INF/*.RSA'
+            exclude 'META-INF/*.SF'
+        }
+
+        tasks.named('build') { finalizedBy(shadowTask) }
+
+        tasks.register("${ml.officialName}RunWithHeadlessMc", HeadlessMcRunTask) {
+            group 'headlessmc'
+            from(tasks.named("${platform}ShadowJar"))
+            into(modsDirectory)
+
+            version = "${minecraft_version}"
+            modlauncher = ml
+            lwjgl = rootProject.property('hmc.lwjgl').toBoolean()
+            dummyAssets = rootProject.property('hmc.dummy.assets').toBoolean()
+            mcRuntimeTest = rootProject.property('mc.runtime.test').toBoolean()
+            // specifics = true
+        }
+    }
+}

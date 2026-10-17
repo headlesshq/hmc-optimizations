@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.7.11",
+  "package": "me.earth.headlessmc.optimizations.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+  ],
+  "client": [
+    "MixinMinecraft",
+    "MixinScreenShotHelper",
+    "MixinScreenshotProviderImpl"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

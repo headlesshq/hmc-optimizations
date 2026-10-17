@@ -3,15 +3,13 @@
   "minVersion": "0.8",
   "package": "me.earth.headlessmc.optimizations.mixin",
   "compatibilityLevel": "JAVA_8",
-  "mixins": [
-    "MixinCommandContextImpl"
-  ],
   "client": [
     "MixinClientChunkCache",
     "MixinGameRenderer",
     "MixinMinecraft",
     "MixinRenderTarget",
     "MixinScreen",
+    "MixinScreenshot",
     "MixinSoundBufferLibrary",
     "MixinSoundEngine",
     "MixinSoundManager",

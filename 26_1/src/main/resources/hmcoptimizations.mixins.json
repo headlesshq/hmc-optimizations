@@ -1,0 +1,22 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "me.earth.headlessmc.optimizations.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "MixinClientChunkCache",
+    "MixinClientLevel",
+    "MixinGameRenderer",
+    "MixinGpuDevice",
+    "MixinMinecraft",
+    "MixinRenderTarget",
+    "MixinScreen",
+    "MixinScreenshot",
+    "MixinSoundBufferLibrary",
+    "MixinSoundEngine",
+    "MixinSoundManager"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

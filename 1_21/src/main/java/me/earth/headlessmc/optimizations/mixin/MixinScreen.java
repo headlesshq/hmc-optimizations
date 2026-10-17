@@ -1,5 +1,6 @@
 package me.earth.headlessmc.optimizations.mixin;
 
+import me.earth.headlessmc.optimizations.api.HmcOptimizations;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import org.spongepowered.asm.mixin.Mixin;
@@ -11,7 +12,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinScreen {
     @Inject(method = "renderTransparentBackground", at = @At("HEAD"), cancellable = true)
     private void renderTransparentBackgroundHook(GuiGraphics guiGraphics, CallbackInfo ci) {
-        ci.cancel();
+        if (HmcOptimizations.isActive()) {
+            ci.cancel();
+        }
     }
 
 }

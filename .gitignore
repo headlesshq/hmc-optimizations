@@ -41,3 +41,9 @@ replay_*.log
 /libs/
 /logs/
 /.architectury-transformer/
+
+# benchmark
+
+/benchmark/work/
+/workspace/
+__pycache__/

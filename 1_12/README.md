@@ -1,6 +1,6 @@
-# HeadlessMc-Optimizations 1.12.2
+# HMC-Optimizations 1.12.2
 
-This is actually a port of 
-[HeadlessForge](https://github.com/3arthqu4ke/HeadlessForge),
-a very old project.
-I simply took out the kotlin code and reduced it to skipping rendering code.
+Skips rendering the frames of the game, like the optimizations of the newer versions.
+They can be turned off and on at runtime with HMC-Specifics' `optimize` command.
+Screenshots are read synchronously on 1.12.2, so before a screenshot is taken
+a single frame is rendered without optimizations.

@@ -29,7 +29,7 @@ plugins {
 }
 
 group 'me.earth.headlessmc'
-version '0.4.0'
+version "${project(':hmc-optimizations-api').project_version}"
 
 base {
     archivesName = "hmc-optimizations-${minecraft_version}"
@@ -144,9 +144,9 @@ dependencies {
     implementation 'net.minecraft:launchwrapper:1.12'
     implementation 'org.spongepowered:mixin:0.8.5-SNAPSHOT'
     lexforgeImplementation 'org.spongepowered:mixin:0.8.5-SNAPSHOT'
-    implementation 'me.earth.headlessmc:headlessmc-api:2.1.0'
 
     lwjglAgent 'me.earth.headlessmc:headlessmc-lwjgl:2.1.0'
+    jarLibs project(':hmc-optimizations-api')
     jarLibs 'com.github.ImpactDevelopment:SimpleTweaker:1.2'
     // TODO: package 0.8.5 instead?
     jarLibs('org.spongepowered:mixin:0.8.5-SNAPSHOT') {
@@ -235,7 +235,7 @@ for (Modlauncher mLauncher : Modlauncher.values()) {
         def shadowTask = tasks.register("${platform}ShadowJar", ShadowJar) {
             dependsOn(remapJarTask)
             it.group = 'build'
-            it.archiveClassifier = "${platform}"
+            it.archiveClassifier = "${platform}-release"
             from remapJarTask.outputs
             it.configurations += [ project.configurations.jarLibs ]
             // Mixin is signed

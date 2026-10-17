@@ -1,0 +1,94 @@
+---
+name: Flex Build
+
+"on":
+  workflow_call:
+    inputs:
+      dir:
+        description: Directory to build
+        required: true
+        type: string
+      mc:
+        description: Minecraft version
+        type: string
+      lex:
+        description: LexForge version
+        type: string
+      neo:
+        description: NeoForge version
+        type: string
+      java:
+        description: Java version
+        required: true
+        type: string
+      upload:
+        description: Upload the build artifacts
+        default: true
+        type: boolean
+      publish:
+        description: Run Gradle publish
+        default: false
+        type: boolean
+
+jobs:
+  build:
+    name: Build ${{ inputs.dir }}/${{ inputs.mc }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 1
+          sparse-checkout: |
+            hmc-optimizations-api
+            ${{ inputs.dir }}
+
+      - if: "!inputs.publish"
+        name: Cache build
+        id: cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ${{ inputs.dir }}/build
+          key: build-${{ inputs.mc || inputs.dir }}-${{ hashFiles(format('{0}/[a-z]**', inputs.dir), 'hmc-optimizations-api/**') }}
+
+      - if: steps.cache.outputs.cache-hit != 'true'
+        name: Setup Java
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.java }}
+
+      - if: steps.cache.outputs.cache-hit != 'true'
+        name: Setup Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
+
+      - if: steps.cache.outputs.cache-hit != 'true'
+        name: Give gradlew permissions
+        run: chmod +x gradlew
+        working-directory: ${{ inputs.dir }}
+
+      - if: steps.cache.outputs.cache-hit != 'true' && !inputs.publish
+        name: Gradle build
+        run: >
+          ./gradlew build --stacktrace
+          -Pminecraft_version=${{ inputs.mc }}
+          -Plexforge_version=${{ inputs.lex }}
+          -Pneoforge_version=${{ inputs.neo }}
+        working-directory: ${{ inputs.dir }}
+
+      - if: inputs.publish
+        name: Gradle publish
+        env:
+          DEPLOY_TO_GITHUB_PACKAGES_URL: https://maven.pkg.github.com/${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew publish --stacktrace
+        working-directory: ${{ inputs.dir }}
+
+      - if: inputs.upload
+        name: Upload artifacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: jars-${{ inputs.mc || inputs.dir }}
+          path: ${{ inputs.dir }}/build/libs/*.jar
+          # expire instead of deleting at the end of the run, so failed jobs can be re-run
+          retention-days: 1

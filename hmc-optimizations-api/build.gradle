@@ -1,0 +1,73 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+}
+
+group 'me.earth.headlessmc'
+version "${project_version}"
+
+repositories {
+    mavenCentral()
+}
+
+try { // gradle 9
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+} catch (ignored) {
+
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    if (JavaVersion.current().isJava9Compatible()) {
+        options.release = 8
+    }
+}
+
+java {
+    withSourcesJar()
+}
+
+dependencies {
+    // Provided by HMC-Specifics at runtime, the command is only loaded if HMC-Specifics is installed.
+    compileOnly "info.picocli:picocli:${picocli_version}"
+
+    testImplementation "info.picocli:picocli:${picocli_version}"
+    testImplementation "org.junit.jupiter:junit-jupiter:${junit_version}"
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            "${name.toLowerCase()}"(MavenPublication) {
+                ((MavenPublication) it).groupId "${group}"
+                ((MavenPublication) it).artifactId "hmc-optimizations-api"
+                ((MavenPublication) it).version "${version}"
+                from components.java
+            }
+        }
+
+        repositories {
+            if (System.getenv('DEPLOY_TO_GITHUB_PACKAGES_URL') == null) {
+                maven {
+                    name = 'BuildDirMaven'
+                    url = rootProject.projectDir.toPath().parent.resolve('build').resolve('maven')
+                }
+            } else {
+                maven {
+                    name = 'GithubPackagesMaven'
+                    url = System.getenv('DEPLOY_TO_GITHUB_PACKAGES_URL')
+                    credentials {
+                        username = System.getenv('GITHUB_ACTOR')
+                        password = System.getenv('GITHUB_TOKEN')
+                    }
+                }
+            }
+        }
+    }
+}
