@@ -52,6 +52,10 @@ Useful options: `--warmup` seconds in the world before measuring, `--interval` s
 
 Results go to `benchmark/work/<loader>-<mc>/results/<mode>-<scenario>-<timestamp>/` with `summary.md` / `leak-report.md` / the render report, `samples.csv`, `gc.log`, JFR files and heap dumps.
 
+`compare` and `summarize` also render SVG charts into `charts/` next to `summary.md` and embed them in it: bar charts of
+the mean FPS, heap, RSS, native memory and GC per scenario, and line charts of heap and RSS over the measured time.
+`leak` renders the heap and RSS of its run over time into `charts/memory.svg`.
+
 ## What the metrics mean
 
 | Metric | Meaning |

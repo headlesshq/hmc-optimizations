@@ -749,6 +749,7 @@ SUMMARY_METRICS = [
 def summarize(result_dir: Path):
     values = {}
     runs = {}
+    rows_per_run = {}
     for run_dir in sorted(p for p in result_dir.iterdir() if p.is_dir()):
         info_file = run_dir / 'run.json'
         if not info_file.exists():
@@ -758,7 +759,9 @@ def summarize(result_dir: Path):
         runs.setdefault(scenario, []).append(run_dir.name)
         bucket = values.setdefault(scenario, {})
         with open(run_dir / 'samples.csv') as f:
-            for row in csv.DictReader(f):
+            rows = list(csv.DictReader(f))
+            rows_per_run.setdefault(scenario, []).append(rows)
+            for row in rows:
                 for key, value in row.items():
                     if value not in ('', None) and key != 't':
                         bucket.setdefault(key, []).append(float(value))
@@ -807,10 +810,162 @@ def summarize(result_dir: Path):
     lines += ['', 'Heap after GC is taken from the GC log (heap occupancy after each pause), NMT values are committed '
                   'memory from `jcmd VM.native_memory summary`. FPS p5 per scenario: '
               + ', '.join(f'{s}: {fmt((table[s].get("fps") or {}).get("p5"))}' for s in scenarios), '']
+    series = {s: {key: mean_series(rows_per_run.get(s, []), key) for key, _ in LINE_CHARTS} for s in scenarios}
+    charts = write_charts(result_dir, scenarios, table, series)
+    if charts:
+        lines += ['## Charts', ''] + [c + '\n' for c in charts]
     text = '\n'.join(lines)
     (result_dir / 'summary.md').write_text(text)
     (result_dir / 'summary.json').write_text(json.dumps(table, indent=2))
     return text
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# charts (plain SVG, no dependencies)
+
+# light colors are attributes, so every SVG renderer shows them, dark mode overrides them with CSS
+LIGHT = {'bg': '#fcfcfb', 'text': '#0b0b0b', 'muted': '#52514e', 'grid': '#e4e3df',
+         's1': '#2a78d6', 's2': '#eb6834', 's3': '#1baf7a', 's4': '#eda100'}
+DARK = {'bg': '#1a1a19', 'text': '#f0efec', 'muted': '#c3c2b7', 'grid': '#383835',
+        's1': '#3987e5', 's2': '#d95926', 's3': '#199e70', 's4': '#c98500'}
+CHART_STYLE = ('<style>text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }'
+               '@media (prefers-color-scheme: dark) {'
+               + ''.join(f'.{k} {{ fill: {v}; }}' for k, v in DARK.items() if k in ('bg', 'text', 'muted'))
+               + f'.grid {{ stroke: {DARK["grid"]}; }}'
+               + ''.join(f'.{k} {{ fill: {v}; stroke: {v}; }} .{k}.line {{ fill: none; }}'
+                         for k, v in DARK.items() if k.startswith('s'))
+               + '}</style>')
+# metrics that get a bar chart in every compare summary, key -> title
+BAR_CHARTS = [
+    ('fps', 'FPS'),
+    ('heap_used_mb', 'Heap used (MB)'),
+    ('heap_after_gc_mb', 'Heap after GC (MB)'),
+    ('rss_mb', 'Process memory, RSS (MB)'),
+    ('nmt_total_mb', 'Native memory committed (MB)'),
+    ('gc_per_min', 'GC pauses per minute'),
+    ('gc_pause_ms_per_min', 'GC pause time (ms per minute)'),
+]
+# metrics that get a line chart over the measured time, key -> title
+LINE_CHARTS = [
+    ('heap_used_mb', 'Heap used over time (MB)'),
+    ('rss_mb', 'Process memory over time (MB)'),
+]
+
+
+def esc(text):
+    return str(text).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+
+def series_color(scenario, scenarios):
+    # color follows the scenario, not its position in this chart
+    known = list(SCENARIOS) if scenario in SCENARIOS else scenarios
+    return f's{known.index(scenario) % 4 + 1}'
+
+
+def svg_text(x, y, content, cls='muted', anchor='start', size=12, weight=400):
+    return (f'<text class="{cls}" x="{x}" y="{y}" fill="{LIGHT[cls]}" text-anchor="{anchor}" '
+            f'font-size="{size}" font-weight="{weight}">{esc(content)}</text>')
+
+
+def nice_max(value):
+    if value <= 0:
+        return 1
+    magnitude = 10 ** (len(str(int(value))) - 1)
+    for step in (1, 2, 2.5, 5, 10):
+        if step * magnitude >= value:
+            return step * magnitude
+    return 10 * magnitude
+
+
+def svg(width, height, body):
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+            f'viewBox="0 0 {width} {height}">{CHART_STYLE}'
+            f'<rect class="bg" width="100%" height="100%" fill="{LIGHT["bg"]}"/>{body}</svg>\n')
+
+
+def bar_chart(title, bars, scenarios):
+    """Horizontal bars, one per scenario. bars: [(scenario, value)]."""
+    width, label_w, value_w, bar_h, gap, top = 640, 110, 90, 22, 10, 44
+    height = top + len(bars) * (bar_h + gap) + 8
+    plot_w = width - label_w - value_w - 16
+    top_value = max(v for _, v in bars) or 1
+    body = [svg_text(16, 26, title, 'text', size=15, weight=600)]
+    for i, (scenario, value) in enumerate(bars):
+        color = series_color(scenario, scenarios)
+        y = top + i * (bar_h + gap)
+        w = max(plot_w * value / top_value, 2)
+        body.append(svg_text(label_w - 8, y + bar_h / 2 + 4, scenario, anchor='end'))
+        # square at the baseline, 4px rounded at the data end
+        body.append(f'<path d="M{label_w},{y} h{w - 4:.1f} q4,0 4,4 v{bar_h - 8} q0,4 -4,4 h{-(w - 4):.1f} z" '
+                    f'class="{color}" fill="{LIGHT[color]}"><title>{esc(scenario)}: {fmt(value)}</title></path>')
+        body.append(svg_text(f'{label_w + w + 6:.1f}', y + bar_h / 2 + 4, fmt(value), 'text'))
+    return svg(width, height, ''.join(body))
+
+
+def line_chart(title, lines, scenarios):
+    """lines: [(name, [(x seconds, y)])], one y axis starting at 0."""
+    width, height, left, right, top, bottom = 640, 300, 56, 16, 64, 36
+    plot_w, plot_h = width - left - right, height - top - bottom
+    x_max = max((x for _, pts in lines for x, _ in pts), default=1) or 1
+    y_max = nice_max(max((y for _, pts in lines for _, y in pts), default=1))
+    body = [svg_text(16, 26, title, 'text', size=15, weight=600)]
+    # legend
+    lx = left
+    for name, _ in lines:
+        color = series_color(name, scenarios)
+        body.append(f'<rect class="{color}" x="{lx}" y="38" width="12" height="12" rx="2" fill="{LIGHT[color]}"/>'
+                    + svg_text(lx + 18, 48, name))
+        lx += 30 + 7 * len(name)
+    for i in range(5):
+        value = y_max * i / 4
+        y = top + plot_h - plot_h * i / 4
+        body.append(f'<line class="grid" stroke="{LIGHT["grid"]}" x1="{left}" x2="{width - right}" '
+                    f'y1="{y:.1f}" y2="{y:.1f}"/>' + svg_text(left - 6, f'{y + 4:.1f}', f'{value:,.0f}', anchor='end'))
+    for i in range(5):
+        x, seconds = left + plot_w * i / 4, x_max * i / 4
+        label = f'{seconds:.0f} s' if x_max < 180 else f'{seconds / 60:.0f} min'
+        anchor = 'start' if i == 0 else 'end' if i == 4 else 'middle'
+        body.append(svg_text(f'{x:.1f}', height - 12, label, anchor=anchor))
+    for name, pts in lines:
+        coords = ' '.join(f'{left + plot_w * x / x_max:.1f},{top + plot_h - plot_h * y / y_max:.1f}' for x, y in pts)
+        color = series_color(name, scenarios)
+        body.append(f'<polyline class="{color} line" points="{coords}" fill="none" stroke="{LIGHT[color]}" '
+                    f'stroke-width="2" stroke-linejoin="round"><title>{esc(name)}</title></polyline>')
+    return svg(width, height, ''.join(body))
+
+
+def write_charts(result_dir: Path, scenarios, table, series):
+    """Writes the compare charts to result_dir/charts and returns markdown that embeds them."""
+    chart_dir = result_dir / 'charts'
+    chart_dir.mkdir(exist_ok=True)
+    markdown = []
+    for key, title in BAR_CHARTS:
+        bars = [(s, table[s][key]['mean']) for s in scenarios if table[s].get(key)]
+        if len(bars) < 1:
+            continue
+        (chart_dir / f'{key}.svg').write_text(bar_chart(title, bars, scenarios))
+        markdown.append(f'![{title}](charts/{key}.svg)')
+    for key, title in LINE_CHARTS:
+        lines = [(s, series[s][key]) for s in scenarios if series.get(s, {}).get(key)]
+        if not lines:
+            continue
+        (chart_dir / f'{key}-over-time.svg').write_text(line_chart(title, lines, scenarios))
+        markdown.append(f'![{title}](charts/{key}-over-time.svg)')
+    return markdown
+
+
+def mean_series(runs, key):
+    """Averages a metric of several runs per sample index, x is seconds since the start of each run."""
+    columns = []
+    for rows in runs:
+        pts = [(float(r['t']), float(r[key])) for r in rows if r.get(key) not in ('', None)]
+        if pts:
+            columns.append([(t - pts[0][0], v) for t, v in pts])
+    if not columns:
+        return []
+    length = min(len(c) for c in columns)
+    return [(statistics.fmean(c[i][0] for c in columns), statistics.fmean(c[i][1] for c in columns))
+            for i in range(length)]
 
 
 def fmt(value):
@@ -977,6 +1132,11 @@ def cmd_leak(args):
         writer = csv.DictWriter(f, fieldnames=SAMPLE_FIELDS)
         writer.writeheader()
         writer.writerows(samples)
+    memory = [(name, [(float(r['t']) - float(samples[0]['t']), float(r[key])) for r in samples if r.get(key) is not None])
+              for name, key in (('Heap used', 'heap_used_mb'), ('RSS', 'rss_mb'))] if samples else []
+    if any(pts for _, pts in memory):
+        (run_dir / 'charts').mkdir(exist_ok=True)
+        (run_dir / 'charts' / 'memory.svg').write_text(line_chart('Memory over time (MB)', memory, ['Heap used', 'RSS']))
 
     movement = (f'teleporting {args.move_distance} blocks every {args.move_every}s' if args.move_every
                 else 'standing still')
@@ -986,6 +1146,8 @@ def cmd_leak(args):
     for key in ('heap_used_mb', 'rss_mb', 'nmt_total_mb', 'nmt_java_heap_mb', 'nmt_class_mb', 'nmt_other_mb',
                 'nmt_malloc_mb', 'threads', 'chunks', 'entities'):
         report.append(f'| {key} | {first.get(key)} | {last.get(key)} |')
+    if (run_dir / 'charts' / 'memory.svg').exists():
+        report += ['', '![Memory over time (MB)](charts/memory.svg)']
     live = [(t, sum(s for _, s in h.values())) for t, h in snapshots]
     report += ['', 'Live heap after full GC (from the class histograms): '
                + ', '.join(f'{t / 60:.0f}min {b / 1048576:.0f}MB' for t, b in live), '']
