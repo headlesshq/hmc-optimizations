@@ -324,22 +324,6 @@ jobs:
           overwrite: true
           file_glob: true
 
-  clean:
-    name: Clean up
-    needs:
-      - run
-      - xvfb
-      - release
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Delete artifacts
-        uses: geekyeggo/delete-artifact@f275313e70c08f6120db482d7a6b98377786765b # v5.1.0
-        with:
-          name: |
-            jars-*
-          failOnError: false
-
   claude-fix:
     name: Claude fix
     needs: [build, run, xvfb]

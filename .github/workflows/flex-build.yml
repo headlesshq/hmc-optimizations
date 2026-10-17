@@ -90,3 +90,5 @@ jobs:
         with:
           name: jars-${{ inputs.mc || inputs.dir }}
           path: ${{ inputs.dir }}/build/libs/*.jar
+          # expire instead of deleting at the end of the run, so failed jobs can be re-run
+          retention-days: 1
