@@ -13,11 +13,11 @@
 </div>
 
 > [!WARNING]
-> Mods that have mixins in rendering code and NEED that code to be called will not work while the
-> optimizations are on, because we skip that code. You can turn the optimizations off, see [below](#turning-optimizations-on-and-off).
+> This mod skips large parts of the rendering pipeline of Minecraft.
+> It makes changes that together with other mods can be unstable.
 
 Version specific optimizations for [HeadlessMC](https://github.com/headlesshq/headlessmc).
-The goal of HeadlessMC is to make the Minecraft client run on the command line. It does so by
+The goal of HeadlessMC is to make the Minecraft client run on the command line, headless. It does so by
 hooking into the LWJGL library skipping all the code. This also makes it largely
 Minecraft version independent, as I only have to target the LWJGL library.
 
@@ -40,8 +40,7 @@ A headless SinglePlayer world on Minecraft 1.21.4 (Fabric, dummy assets), measur
 | Process memory (RSS) | 1,609 MB                  | 1,158 MB (-28%)        |
 | GC pauses per minute | 458                       | 172 (-63%)             |
 
-### Supported Minecraft Versions and Modloaders
-
+HMC-Optimizations currently supports the following Minecraft versions and modloaders:
 | Version         | Forge | Fabric | NeoForge |
 |-----------------|-------|--------|----------|
 | 26.1 - 26.3     | ✅    | ✅     | ✅       |
@@ -51,13 +50,9 @@ A headless SinglePlayer world on Minecraft 1.21.4 (Fabric, dummy assets), measur
 | 1.18.2          | ✅    | ✅     | —        |
 | 1.17.1          | ✅    | ✅     | —        |
 | 1.16.5          | ✅    | ✅     | —        |
-| 1.12.2          | ✅    | ⚠️     | —        |
+| 1.12.2          | ✅    | ✅     | —        |
 | 1.8.9           | ✅    | —      | —        |
 | 1.7.10          | ✅    | —      | —        |
-
-*⚠️ Versions marked with a warning symbol have limited or untested support,
-e.g. legacy Fabric, which HeadlessMC cannot launch yet.
-1.21.2 and 1.21.9 are not supported, MC-Runtime-Test and HMC-Specifics do not support them either.*
 
 Download the jar for your version and modloader from the [releases](https://github.com/headlesshq/hmc-optimizations/releases).
 For every Minecraft version there is a `<mc>-latest` release, e.g. `1.21.4-latest`.
