@@ -116,7 +116,7 @@ costs time while the optimizations are on.
 
 ### Building
 
-Every Minecraft version has its own directory with its own Gradle build, e.g. `1_21`.
+Every Minecraft version has its own directory in `versions` with its own Gradle build, e.g. `versions/1_21`.
 Build one with `./gradlew build` in that directory, other versions of the same directory
 are built by passing `-Pminecraft_version`, `-Plexforge_version` and `-Pneoforge_version`, see `ci-data.json`.
 The jars ending in `-release.jar` in `build/libs` are the ones to use.
