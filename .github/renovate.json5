@@ -15,6 +15,7 @@
   enabledManagers: [
     'github-actions',
     'gradle',
+    'devcontainer',
     'custom.regex',
   ],
   // The Minecraft version projects pin their loaders and toolchains on purpose,
