@@ -21,6 +21,7 @@
   // The Minecraft version projects pin their loaders and toolchains on purpose,
   // new Minecraft versions are added by the mc-update-helper instead.
   includePaths: [
+    '.devcontainer/**',
     '.github/**',
     'hmc-optimizations-api/**',
   ],
@@ -73,6 +74,14 @@
         'custom.regex',
       ],
       semanticCommitType: 'ci',
+      semanticCommitScope: 'deps',
+    },
+    {
+      // the devcontainer is only a development environment, so its updates should not trigger a release
+      matchManagers: [
+        'devcontainer',
+      ],
+      semanticCommitType: 'chore',
       semanticCommitScope: 'deps',
     },
     {
