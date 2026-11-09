@@ -16,14 +16,20 @@
     'github-actions',
     'gradle',
     'devcontainer',
+    'nix',
     'custom.regex',
   ],
+  // the nix manager is in beta and disabled by default
+  nix: {
+    enabled: true,
+  },
   // The Minecraft version projects pin their loaders and toolchains on purpose,
   // new Minecraft versions are added by the mc-update-helper instead.
   includePaths: [
     '.devcontainer/**',
     '.github/**',
     'hmc-optimizations-api/**',
+    'flake.nix',
   ],
   customManagers: [
     {
@@ -66,6 +72,19 @@
         'gradle',
       ],
       semanticCommitType: 'fix',
+      semanticCommitScope: 'deps',
+    },
+    {
+      // the flake only provides the dev shell, so its inputs are updated together once a month
+      matchManagers: [
+        'nix',
+      ],
+      groupName: 'nix flake inputs',
+      schedule: [
+        'on the first day of the month',
+      ],
+      automerge: false,
+      semanticCommitType: 'build',
       semanticCommitScope: 'deps',
     },
     {
