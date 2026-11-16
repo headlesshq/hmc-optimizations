@@ -28,7 +28,7 @@ concurrency: # FIXME: prevent release commit cancellation
   cancel-in-progress: true
 
 env:
-  HMC_VERSION: 3.0.0-RC8
+  HMC_VERSION: 3.0.0-RC9
   # HMC-Specifics provides the optimize command and takes the screenshots in the xvfb tests
   HMC_SPECIFICS_VERSION: 3.0.0
 
