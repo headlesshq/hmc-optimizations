@@ -34,7 +34,7 @@ REPO_DIR = BENCH_DIR.parent
 WORK_DIR = BENCH_DIR / 'work'
 TOOLS_DIR = WORK_DIR / 'tools'
 
-HMC_VERSION = '3.0.0-RC8'
+HMC_VERSION = '3.0.0-RC9'
 # the Java version HeadlessMc itself needs
 HMC_JAVA = 25
 HMC_URL = 'https://github.com/headlesshq/headlessmc/releases/download/{version}/headlessmc.jar'
